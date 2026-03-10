@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Low stock alerts for Kaarunya Dress Shop inventory">
+    <title>Kaarunya | Low Stock Alerts</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="logo"><i class="fas fa-gem logo-icon"></i>
+                <div class="logo-text">
+                    <h1>Kaarunya</h1><span>Dress Shop</span>
+                </div>
+            </div>
+            <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar"><i
+                    class="fas fa-chevron-left"></i></button>
+        </div>
+        <nav class="sidebar-nav">
+            <ul>
+                <li><a href="index.html"><i class="fas fa-th-large"></i><span>Dashboard</span></a></li>
+                <li><a href="suppliers.html"><i class="fas fa-truck"></i><span>Suppliers</span></a></li>
+                <li><a href="products.html"><i class="fas fa-tshirt"></i><span>Products</span></a></li>
+                <li><a href="orders.html"><i class="fas fa-file-invoice"></i><span>Purchase Orders</span></a></li>
+                <li class="active"><a href="alerts.html"><i class="fas fa-bell"></i><span>Low Stock Alerts</span><span
+                            class="badge" id="alertBadge">5</span></a></li>
+                <li><a href="price-compare.html"><i class="fas fa-balance-scale"></i><span>Price Comparison</span></a>
+                </li>
+                <li><a href="reports.html"><i class="fas fa-chart-bar"></i><span>Reports</span></a></li>
+            </ul>
+        </nav>
+        <div class="sidebar-footer">
+            <div class="user-profile">
+                <div class="avatar"><i class="fas fa-user"></i></div>
+                <div class="user-info"><span class="user-name">Admin User</span><span class="user-role">Manager</span>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <main class="main-content" id="mainContent">
+        <header class="topbar">
+            <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Open menu"><i
+                    class="fas fa-bars"></i></button>
+            <div class="topbar-left">
+                <h2 class="page-title">Low Stock Alerts</h2>
+                <p class="page-subtitle">Items that need immediate restocking attention</p>
+            </div>
+            <div class="topbar-right">
+                <div class="topbar-actions">
+                    <button class="icon-btn" id="notificationBtn" aria-label="Notifications"><i
+                            class="fas fa-bell"></i><span class="notification-dot"></span></button>
+                </div>
+            </div>
+        </header>
+
+        <div class="content-area">
+            <div class="page-header">
+                <div class="page-header-left">
+                    <h2><i class="fas fa-exclamation-triangle" style="color: var(--clr-danger); margin-right: 8px;"></i>
+                        Active Alerts</h2>
+                    <p id="alertCount">5 items below minimum stock level</p>
+                </div>
+                <a href="orders.html" class="btn btn-primary"><i class="fas fa-file-invoice"></i> Create Restock
+                    Order</a>
+            </div>
+
+            <div class="filter-bar">
+                <select id="severityFilter">
+                    <option value="">All Severity</option>
+                    <option value="critical">Critical (≤3 units)</option>
+                    <option value="warning">Warning (≤min stock)</option>
+                </select>
+                <select id="alertFabricFilter">
+                    <option value="">All Fabrics</option>
+                    <option value="Cotton">Cotton</option>
+                    <option value="Rayon">Rayon</option>
+                    <option value="Silk">Silk</option>
+                    <option value="Linen">Linen</option>
+                    <option value="Denim">Denim</option>
+                </select>
+            </div>
+
+            <div class="alert-cards" id="alertCardsContainer"></div>
+
+            <!-- Also show as table -->
+            <div class="data-card" style="margin-top: var(--space-xl);">
+                <div class="chart-header" style="padding: var(--space-lg);">
+                    <h3>Low Stock Details</h3>
+                </div>
+                <div class="table-wrapper">
+                    <table class="data-table" id="alertTable">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th>Category</th>
+                                <th>Fabric</th>
+                                <th>Current Stock</th>
+                                <th>Min Stock</th>
+                                <th>Deficit</th>
+                                <th>Supplier</th>
+                                <th>Severity</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="alertTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div class="notification-panel" id="notificationPanel">
+        <div class="notification-header">
+            <h3>Notifications</h3><button class="btn-text" id="markAllRead">Mark all read</button>
+        </div>
+        <div class="notification-list"></div>
+    </div>
+    <div class="overlay" id="overlay"></div>
+
+    <script src="js/data.js"></script>
+    <script src="js/alerts.js"></script>
+</body>
+
+</html>

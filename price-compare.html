@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Compare supplier prices for Kaarunya Dress Shop products">
+    <title>Kaarunya | Supplier Price Comparison</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="logo"><i class="fas fa-gem logo-icon"></i>
+                <div class="logo-text">
+                    <h1>Kaarunya</h1><span>Dress Shop</span>
+                </div>
+            </div>
+            <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar"><i
+                    class="fas fa-chevron-left"></i></button>
+        </div>
+        <nav class="sidebar-nav">
+            <ul>
+                <li><a href="index.html"><i class="fas fa-th-large"></i><span>Dashboard</span></a></li>
+                <li><a href="suppliers.html"><i class="fas fa-truck"></i><span>Suppliers</span></a></li>
+                <li><a href="products.html"><i class="fas fa-tshirt"></i><span>Products</span></a></li>
+                <li><a href="orders.html"><i class="fas fa-file-invoice"></i><span>Purchase Orders</span></a></li>
+                <li><a href="alerts.html"><i class="fas fa-bell"></i><span>Low Stock Alerts</span><span class="badge"
+                            id="alertBadge">5</span></a></li>
+                <li class="active"><a href="price-compare.html"><i class="fas fa-balance-scale"></i><span>Price
+                            Comparison</span></a></li>
+                <li><a href="reports.html"><i class="fas fa-chart-bar"></i><span>Reports</span></a></li>
+            </ul>
+        </nav>
+        <div class="sidebar-footer">
+            <div class="user-profile">
+                <div class="avatar"><i class="fas fa-user"></i></div>
+                <div class="user-info"><span class="user-name">Admin User</span><span class="user-role">Manager</span>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <main class="main-content" id="mainContent">
+        <header class="topbar">
+            <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Open menu"><i
+                    class="fas fa-bars"></i></button>
+            <div class="topbar-left">
+                <h2 class="page-title">Price Comparison</h2>
+                <p class="page-subtitle">Compare supplier prices to find the best deals</p>
+            </div>
+            <div class="topbar-right">
+                <div class="topbar-actions">
+                    <button class="icon-btn" id="notificationBtn" aria-label="Notifications"><i
+                            class="fas fa-bell"></i><span class="notification-dot"></span></button>
+                </div>
+            </div>
+        </header>
+
+        <div class="content-area">
+            <div class="page-header">
+                <div class="page-header-left">
+                    <h2>Supplier Price Comparison</h2>
+                    <p>Compare prices across suppliers for key product categories</p>
+                </div>
+            </div>
+
+            <!-- Price Comparison Chart -->
+            <div class="chart-card mb-lg" id="priceComparisonChartCard">
+                <div class="chart-header">
+                    <h3>Price Comparison Chart</h3>
+                </div>
+                <div class="chart-body">
+                    <canvas id="priceComparisonChart" style="max-height: 350px;"></canvas>
+                </div>
+            </div>
+
+            <!-- Comparison Cards Grid -->
+            <div class="comparison-grid" id="comparisonGrid"></div>
+
+            <!-- Detailed Comparison Table -->
+            <div class="data-card" style="margin-top: var(--space-xl);">
+                <div class="chart-header" style="padding: var(--space-lg);">
+                    <h3>Detailed Price Breakdown</h3>
+                </div>
+                <div class="table-wrapper">
+                    <table class="data-table" id="priceTable">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th>Supplier</th>
+                                <th>Price (₹)</th>
+                                <th>Best Price?</th>
+                                <th>Savings vs Average</th>
+                            </tr>
+                        </thead>
+                        <tbody id="priceTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div class="notification-panel" id="notificationPanel">
+        <div class="notification-header">
+            <h3>Notifications</h3><button class="btn-text" id="markAllRead">Mark all read</button>
+        </div>
+        <div class="notification-list"></div>
+    </div>
+    <div class="overlay" id="overlay"></div>
+
+    <script src="js/data.js"></script>
+    <script src="js/price-compare.js"></script>
+</body>
+
+</html>

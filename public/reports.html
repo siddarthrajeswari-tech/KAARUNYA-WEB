@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Reports and analytics dashboard for Kaarunya Dress Shop">
+    <title>Kaarunya | Reports Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="logo"><i class="fas fa-gem logo-icon"></i>
+                <div class="logo-text">
+                    <h1>Kaarunya</h1><span>Dress Shop</span>
+                </div>
+            </div>
+            <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar"><i
+                    class="fas fa-chevron-left"></i></button>
+        </div>
+        <nav class="sidebar-nav">
+            <ul>
+                <li><a href="index.html"><i class="fas fa-th-large"></i><span>Dashboard</span></a></li>
+                <li><a href="suppliers.html"><i class="fas fa-truck"></i><span>Suppliers</span></a></li>
+                <li><a href="products.html"><i class="fas fa-tshirt"></i><span>Products</span></a></li>
+                <li><a href="orders.html"><i class="fas fa-file-invoice"></i><span>Purchase Orders</span></a></li>
+                <li><a href="alerts.html"><i class="fas fa-bell"></i><span>Low Stock Alerts</span><span class="badge"
+                            id="alertBadge">5</span></a></li>
+                <li><a href="price-compare.html"><i class="fas fa-balance-scale"></i><span>Price Comparison</span></a>
+                </li>
+                <li class="active"><a href="reports.html"><i class="fas fa-chart-bar"></i><span>Reports</span></a></li>
+                <li class="nav-divider"></li>
+                <li><a href="users.html" id="nav-users"><i class="fas fa-users-cog"></i><span>User Management</span></a>
+                </li>
+                <li><a href="activity-log.html" id="nav-activity-log"><i class="fas fa-history"></i><span>Activity
+                            Log</span></a></li>
+                <li><a href="settings.html" id="nav-settings"><i class="fas fa-cog"></i><span>Settings</span></a></li>
+            </ul>
+        </nav>
+        <div class="sidebar-footer">
+            <div class="user-profile">
+                <div class="avatar"><i class="fas fa-user"></i></div>
+                <div class="user-info"><span class="user-name" id="sidebarUserName">Admin User</span><span
+                        class="user-role" id="sidebarUserRole">Manager</span>
+
+                    <button class="logout-btn" id="logoutBtn" title="Logout"><i
+                            class="fas fa-sign-out-alt"></i></button>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <main class="main-content" id="mainContent">
+        <header class="topbar">
+            <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Open menu"><i
+                    class="fas fa-bars"></i></button>
+            <div class="topbar-left">
+                <h2 class="page-title">Reports</h2>
+                <p class="page-subtitle">Analytics and insights for your inventory</p>
+            </div>
+            <div class="topbar-right">
+                <div class="topbar-actions">
+                    <button class="icon-btn" id="notificationBtn" aria-label="Notifications"><i
+                            class="fas fa-bell"></i><span class="notification-dot"></span></button>
+                </div>
+            </div>
+        </header>
+
+        <div class="content-area">
+            <!-- Report Filters -->
+            <div class="report-filters">
+                <div style="flex: 1;">
+                    <span
+                        style="font-size: 0.85rem; font-weight: 500; color: var(--clr-text-secondary); margin-right: 8px;">Period:</span>
+                    <select id="reportPeriod"
+                        style="padding: 8px 14px; border: 1px solid var(--clr-border); border-radius: var(--radius-sm); background: var(--clr-surface); font-size: 0.85rem; cursor: pointer;">
+                        <option value="3">Last 3 Months</option>
+                        <option value="6">Last 6 Months</option>
+                        <option value="12" selected>Last 12 Months</option>
+                    </select>
+                </div>
+                <button class="btn btn-secondary btn-sm"><i class="fas fa-download"></i> Export PDF</button>
+                <button class="btn btn-secondary btn-sm"><i class="fas fa-file-csv"></i> Export CSV</button>
+            </div>
+
+            <!-- KPI Stats -->
+            <div class="stat-pills">
+                <div class="stat-pill">
+                    <div class="stat-pill-icon" style="background: var(--clr-success-bg); color: var(--clr-success);"><i
+                            class="fas fa-rupee-sign"></i></div>
+                    <div class="stat-pill-text">
+                        <span class="label">Total Purchases (Year)</span>
+                        <span class="value" id="totalPurchaseValue">₹6,59,000</span>
+                    </div>
+                </div>
+                <div class="stat-pill">
+                    <div class="stat-pill-icon" style="background: var(--clr-info-bg); color: var(--clr-info);"><i
+                            class="fas fa-boxes"></i></div>
+                    <div class="stat-pill-text">
+                        <span class="label">Total Stock Value</span>
+                        <span class="value" id="totalStockValue">₰</span>
+                    </div>
+                </div>
+                <div class="stat-pill">
+                    <div class="stat-pill-icon" style="background: var(--clr-warning-bg); color: var(--clr-warning);"><i
+                            class="fas fa-chart-line"></i></div>
+                    <div class="stat-pill-text">
+                        <span class="label">Avg Order Value</span>
+                        <span class="value" id="avgOrderValue">₹0</span>
+                    </div>
+                </div>
+                <div class="stat-pill">
+                    <div class="stat-pill-icon" style="background: var(--clr-danger-bg); color: var(--clr-danger);"><i
+                            class="fas fa-exclamation-circle"></i></div>
+                    <div class="stat-pill-text">
+                        <span class="label">Stock Turnover Alerts</span>
+                        <span class="value" id="turnoverAlerts">5</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts -->
+            <div class="report-charts">
+                <div class="report-chart-card">
+                    <div class="chart-header">
+                        <h3>Purchase Trend Analysis</h3>
+                    </div>
+                    <div class="chart-body"><canvas id="purchaseTrendChart"></canvas></div>
+                </div>
+                <div class="report-chart-card">
+                    <div class="chart-header">
+                        <h3>Stock Distribution by Fabric</h3>
+                    </div>
+                    <div class="chart-body"><canvas id="fabricStockChart"></canvas></div>
+                </div>
+            </div>
+
+            <div class="report-charts">
+                <div class="report-chart-card">
+                    <div class="chart-header">
+                        <h3>Supplier Order Volume</h3>
+                    </div>
+                    <div class="chart-body"><canvas id="supplierVolumeChart"></canvas></div>
+                </div>
+                <div class="report-chart-card">
+                    <div class="chart-header">
+                        <h3>Category-wise Inventory Value</h3>
+                    </div>
+                    <div class="chart-body"><canvas id="categoryValueChart"></canvas></div>
+                </div>
+            </div>
+
+            <!-- Top Suppliers Table -->
+            <div class="data-card">
+                <div class="chart-header" style="padding: var(--space-lg);">
+                    <h3>Supplier Performance Summary</h3>
+                </div>
+                <div class="table-wrapper">
+                    <table class="data-table" id="supplierPerfTable">
+                        <thead>
+                            <tr>
+                                <th>Supplier</th>
+                                <th>Total Orders</th>
+                                <th>Total Value (₹)</th>
+                                <th>Avg Order Value (₹)</th>
+                                <th>On-Time Delivery</th>
+                                <th>Rating</th>
+                            </tr>
+                        </thead>
+                        <tbody id="supplierPerfBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div class="notification-panel" id="notificationPanel">
+        <div class="notification-header">
+            <h3>Notifications</h3><button class="btn-text" id="markAllRead">Mark all read</button>
+        </div>
+        <div class="notification-list"></div>
+    </div>
+    <div class="overlay" id="overlay"></div>
+
+    <script src="js/api.js"></script>
+    <script src="js/reports.js"></script>
+</body>
+
+</html>

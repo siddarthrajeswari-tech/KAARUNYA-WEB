@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="User Management - Kaarunya Dress Shop">
+    <title>Kaarunya | User Management</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="logo"><i class="fas fa-gem logo-icon"></i>
+                <div class="logo-text">
+                    <h1>Kaarunya</h1><span>Dress Shop</span>
+                </div>
+            </div>
+            <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar"><i
+                    class="fas fa-chevron-left"></i></button>
+        </div>
+        <nav class="sidebar-nav">
+            <ul>
+                <li><a href="index.html" id="nav-dashboard"><i class="fas fa-th-large"></i><span>Dashboard</span></a>
+                </li>
+                <li><a href="suppliers.html" id="nav-suppliers"><i class="fas fa-truck"></i><span>Suppliers</span></a>
+                </li>
+                <li><a href="products.html" id="nav-products"><i class="fas fa-tshirt"></i><span>Products</span></a>
+                </li>
+                <li><a href="orders.html" id="nav-orders"><i class="fas fa-file-invoice"></i><span>Purchase
+                            Orders</span></a></li>
+                <li><a href="alerts.html" id="nav-alerts"><i class="fas fa-bell"></i><span>Low Stock Alerts</span><span
+                            class="badge" id="alertBadge">0</span></a></li>
+                <li><a href="price-compare.html" id="nav-price-compare"><i class="fas fa-balance-scale"></i><span>Price
+                            Comparison</span></a></li>
+                <li><a href="reports.html" id="nav-reports"><i class="fas fa-chart-bar"></i><span>Reports</span></a>
+                </li>
+                <li class="nav-divider"></li>
+                <li class="active"><a href="users.html" id="nav-users"><i class="fas fa-users-cog"></i><span>User
+                            Management</span></a></li>
+                <li><a href="activity-log.html" id="nav-activity-log"><i class="fas fa-history"></i><span>Activity
+                            Log</span></a></li>
+                <li><a href="settings.html" id="nav-settings"><i class="fas fa-cog"></i><span>Settings</span></a></li>
+            </ul>
+        </nav>
+        <div class="sidebar-footer">
+            <div class="user-profile">
+                <div class="avatar"><i class="fas fa-user"></i></div>
+                <div class="user-info"><span class="user-name" id="sidebarUserName">Admin User</span><span
+                        class="user-role" id="sidebarUserRole">Admin</span></div>
+            </div>
+            <button class="logout-btn" id="logoutBtn" title="Logout"><i class="fas fa-sign-out-alt"></i></button>
+        </div>
+    </aside>
+
+    <main class="main-content" id="mainContent">
+        <header class="topbar">
+            <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Open menu"><i
+                    class="fas fa-bars"></i></button>
+            <div class="topbar-left">
+                <h2 class="page-title">User Management</h2>
+                <p class="page-subtitle">Manage users, roles, and permissions</p>
+            </div>
+            <div class="topbar-right">
+                <div class="topbar-actions">
+                    <button class="btn btn-primary admin-only" id="addUserBtn">
+                        <i class="fas fa-user-plus"></i> Add User
+                    </button>
+                    <button class="icon-btn" id="notificationBtn" aria-label="Notifications"><i
+                            class="fas fa-bell"></i><span class="notification-dot"></span></button>
+                </div>
+            </div>
+        </header>
+
+        <div class="content-area">
+            <!-- User Stats Cards -->
+            <div class="summary-cards">
+                <div class="summary-card">
+                    <div class="card-icon" style="background: linear-gradient(135deg, #C4A882, #A8896C);">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="card-info">
+                        <span class="card-label">Total Users</span>
+                        <h3 class="card-value" id="totalUsers">0</h3>
+                    </div>
+                </div>
+                <div class="summary-card">
+                    <div class="card-icon" style="background: linear-gradient(135deg, #6B9E76, #4A7A55);">
+                        <i class="fas fa-user-check"></i>
+                    </div>
+                    <div class="card-info">
+                        <span class="card-label">Active Users</span>
+                        <h3 class="card-value" id="activeUsers">0</h3>
+                    </div>
+                </div>
+                <div class="summary-card">
+                    <div class="card-icon" style="background: linear-gradient(135deg, #D4A574, #B8895A);">
+                        <i class="fas fa-user-shield"></i>
+                    </div>
+                    <div class="card-info">
+                        <span class="card-label">Admins</span>
+                        <h3 class="card-value" id="adminCount">0</h3>
+                    </div>
+                </div>
+                <div class="summary-card">
+                    <div class="card-icon" style="background: linear-gradient(135deg, #8B7355, #6B5B45);">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <div class="card-info">
+                        <span class="card-label">2FA Enabled</span>
+                        <h3 class="card-value" id="tfaCount">0</h3>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Users Table -->
+            <div class="chart-card wide">
+                <div class="chart-header">
+                    <h3><i class="fas fa-users" style="margin-right: 8px; color: var(--clr-primary-400);"></i>All Users
+                    </h3>
+                    <div class="chart-actions">
+                        <select id="roleFilter" class="chart-select" style="min-width: 120px;">
+                            <option value="">All Roles</option>
+                            <option value="admin">Admin</option>
+                            <option value="manager">Manager</option>
+                            <option value="staff">Staff</option>
+                        </select>
+                        <select id="statusFilter" class="chart-select" style="min-width: 120px;">
+                            <option value="">All Status</option>
+                            <option value="1">Active</option>
+                            <option value="0">Inactive</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="table-wrapper">
+                    <table class="data-table" id="usersTable">
+                        <thead>
+                            <tr>
+                                <th>User</th>
+                                <th>Username</th>
+                                <th>Role</th>
+                                <th>Email</th>
+                                <th>Status</th>
+                                <th>2FA</th>
+                                <th>Joined</th>
+                                <th class="admin-only">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usersTableBody">
+                            <tr>
+                                <td colspan="8" style="text-align: center; padding: 40px;">
+                                    <i class="fas fa-spinner fa-spin"
+                                        style="font-size: 1.5rem; color: var(--clr-primary-400);"></i>
+                                    <p style="margin-top: 8px; color: var(--clr-text-muted);">Loading users...</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Role Permissions Card -->
+            <div class="chart-card wide" style="margin-top: var(--space-lg);">
+                <div class="chart-header">
+                    <h3><i class="fas fa-key" style="margin-right: 8px; color: var(--clr-primary-400);"></i>Role
+                        Permissions</h3>
+                </div>
+                <div class="table-wrapper">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Permission</th>
+                                <th style="text-align:center;">Admin</th>
+                                <th style="text-align:center;">Manager</th>
+                                <th style="text-align:center;">Staff</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>View Dashboard</td>
+                                <td style="text-align:center;"><i class="fas fa-check-circle"
+                                        style="color: var(--clr-success);"></i></td>
+                                <td style="text-align:center;"><i class="fas fa-check-circle"
+                                        style="color: var(--clr-success);"></i></td>
+                                <td style="text-align:center;"><i class="fas fa-check-circle"
+                                        style="color: var(--clr-success);"></i></td>
+                            </tr>
+                            <tr>
+                                <td>Manage Products & Inventory</td>
+                                <td style="text-align:center;"><i class="fas fa-check-circle"
+                                        style="color: var(--clr-success);"></i></td>
+                                <td style="text-align:center;"><i class="fas fa-check-circle"
+                                        style="color: var(--clr-success);"></i></td>
+                                <td style="text-align:center;"><i class="fas fa-minus-circle"
+                                        style="color: var(--clr-text-muted); opacity: 0.4;"></i></td>
+                            </tr>
+                            <tr>
+                                <td>Manage Suppliers & Orders</td>
+                                <td style="text-align:center;"><i class="fas fa-check-circle"
+                                        style="color: var(--clr-success);"></i></td>
+                                <td style="text-align:center;"><i class="fas fa-check-circle"
+                                        style="color: var(--clr-success);"></i></td>
+                                <td style="text-align:center;"><i class="fas fa-minus-circle"
+                                        style="color: var(--clr-text-muted); opacity: 0.4;"></i></td>
+                            </tr>
+                            <tr>
+                                <td>View Reports & Analytics</td>
+                                <td style="text-align:center;"><i class="fas fa-check-circle"
+                                        style="color: var(--clr-success);"></i></td>
+                                <td style="text-align:center;"><i class="fas fa-check-circle"
+                                        style="color: var(--clr-success);"></i></td>
+                                <td style="text-align:center;"><i class="fas fa-check-circle"
+                                        style="color: var(--clr-success);"></i></td>
+                            </tr>
+                            <tr>
+                                <td>View & Update Stock Only</td>
+                                <td style="text-align:center;"><i class="fas fa-check-circle"
+                                        style="color: var(--clr-success);"></i></td>
+                                <td style="text-align:center;"><i class="fas fa-check-circle"
+                                        style="color: var(--clr-success);"></i></td>
+                                <td style="text-align:center;"><i class="fas fa-check-circle"
+                                        style="color: var(--clr-success);"></i></td>
+                            </tr>
+                            <tr>
+                                <td>Manage Users</td>
+                                <td style="text-align:center;"><i class="fas fa-check-circle"
+                                        style="color: var(--clr-success);"></i></td>
+                                <td style="text-align:center;"><i class="fas fa-minus-circle"
+                                        style="color: var(--clr-text-muted); opacity: 0.4;"></i></td>
+                                <td style="text-align:center;"><i class="fas fa-minus-circle"
+                                        style="color: var(--clr-text-muted); opacity: 0.4;"></i></td>
+                            </tr>
+                            <tr>
+                                <td>View Activity Log</td>
+                                <td style="text-align:center;"><i class="fas fa-check-circle"
+                                        style="color: var(--clr-success);"></i></td>
+                                <td style="text-align:center;"><i class="fas fa-check-circle"
+                                        style="color: var(--clr-success);"></i></td>
+                                <td style="text-align:center;"><i class="fas fa-minus-circle"
+                                        style="color: var(--clr-text-muted); opacity: 0.4;"></i></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Add/Edit User Modal -->
+    <div class="modal-overlay" id="userModal" style="display:none;">
+        <div class="modal" style="max-width: 540px;">
+            <div class="modal-header">
+                <h3 id="userModalTitle"><i class="fas fa-user-plus"></i> Add New User</h3>
+                <button class="modal-close" id="closeUserModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="userForm">
+                    <input type="hidden" id="editUserId">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label" for="userFullName">Full Name *</label>
+                            <input type="text" class="form-control" id="userFullName" placeholder="Enter full name"
+                                required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="userUsername">Username *</label>
+                            <input type="text" class="form-control" id="userUsername" placeholder="Choose a username"
+                                required>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label" for="userEmail">Email Address</label>
+                            <input type="email" class="form-control" id="userEmail" placeholder="user@email.com">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="userRole">Role *</label>
+                            <select class="form-control" id="userRole" required>
+                                <option value="staff">Staff</option>
+                                <option value="manager">Manager</option>
+                                <option value="admin">Admin</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="userPassword">Password <span id="passwordHint">*</span></label>
+                        <input type="password" class="form-control" id="userPassword" placeholder="Min 6 characters"
+                            minlength="6">
+                        <small id="passwordEditHint"
+                            style="display:none; color: var(--clr-text-muted); font-size: 0.75rem;">Leave blank to keep
+                            current password</small>
+                    </div>
+                    <div class="form-group" id="userStatusGroup" style="display:none;">
+                        <label class="form-label">Status</label>
+                        <div style="display:flex; gap:16px; margin-top:4px;">
+                            <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                                <input type="radio" name="userStatus" value="1" checked> Active
+                            </label>
+                            <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                                <input type="radio" name="userStatus" value="0"> Inactive
+                            </label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancelUserModal">Cancel</button>
+                <button class="btn btn-primary" id="saveUserBtn"><i class="fas fa-save"></i> Save User</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="notification-panel" id="notificationPanel">
+        <div class="notification-header">
+            <h3>Notifications</h3><button class="btn-text" id="markAllRead">Mark all read</button>
+        </div>
+        <div class="notification-list"></div>
+    </div>
+    <div class="overlay" id="overlay"></div>
+
+    <script src="js/api.js"></script>
+    <script src="js/users.js"></script>
+</body>
+
+</html>
