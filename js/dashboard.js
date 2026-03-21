@@ -25,32 +25,23 @@ function renderPurchaseChart() {
     if (!ctx) return;
 
     new Chart(ctx, {
-        type: 'bar',
+        type: 'line',
         data: {
             labels: DATA.monthlyPurchases.labels,
             datasets: [
                 {
                     label: 'Purchase Amount (₹)',
                     data: DATA.monthlyPurchases.amounts,
-                    backgroundColor: CHART_COLORS.primaryBg,
                     borderColor: CHART_COLORS.primary,
-                    borderWidth: 2,
-                    borderRadius: 8,
-                    borderSkipped: false,
-                    barPercentage: 0.6,
-                },
-                {
-                    label: 'Number of Orders',
-                    data: DATA.monthlyPurchases.counts.map(c => c * 10000),
-                    type: 'line',
-                    borderColor: CHART_COLORS.accent,
-                    backgroundColor: CHART_COLORS.accentBg,
-                    pointBackgroundColor: CHART_COLORS.accent,
-                    pointRadius: 5,
-                    pointHoverRadius: 7,
-                    tension: 0.4,
+                    backgroundColor: CHART_COLORS.primaryBg,
                     fill: true,
-                    yAxisID: 'y',
+                    pointBackgroundColor: CHART_COLORS.primary,
+                    pointBorderColor: '#ffffff',
+                    pointBorderWidth: 2,
+                    pointRadius: 5,
+                    pointHoverRadius: 8,
+                    borderWidth: 3,
+                    tension: 0.4,
                 }
             ]
         },
@@ -64,10 +55,7 @@ function renderPurchaseChart() {
                 tooltip: {
                     callbacks: {
                         label: function (ctx) {
-                            if (ctx.dataset.label.includes('Amount')) {
-                                return ctx.dataset.label + ': ₹' + ctx.raw.toLocaleString('en-IN');
-                            }
-                            return 'Orders: ' + (ctx.raw / 10000);
+                            return ctx.dataset.label + ': ₹' + ctx.raw.toLocaleString('en-IN');
                         }
                     }
                 }
@@ -92,25 +80,38 @@ function renderStockChart() {
     if (!ctx) return;
 
     new Chart(ctx, {
-        type: 'doughnut',
+        type: 'bar',
         data: {
             labels: DATA.stockByCategory.labels,
             datasets: [{
                 data: DATA.stockByCategory.values,
-                backgroundColor: [CHART_COLORS.primary, CHART_COLORS.accent],
-                borderColor: '#fff',
-                borderWidth: 4,
-                hoverOffset: 10,
+                backgroundColor: [
+                    'rgba(37, 99, 235, 0.9)',
+                    'rgba(59, 130, 246, 0.85)',
+                    'rgba(96, 165, 250, 0.8)',
+                    'rgba(147, 197, 253, 0.75)'
+                ],
+                borderColor: [
+                    'rgba(37, 99, 235, 1)',
+                    'rgba(59, 130, 246, 1)',
+                    'rgba(96, 165, 250, 1)',
+                    'rgba(147, 197, 253, 1)'
+                ],
+                borderWidth: 1,
+                borderRadius: 8,
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: true,
             aspectRatio: 1.5,
-            cutout: '65%',
             plugins: {
                 legend: { position: 'bottom' },
-            }
+            },
+            scales: {
+                y: { beginAtZero: true },
+                x: { grid: { display: false } }
+            },
         }
     });
 }
@@ -120,7 +121,7 @@ function renderFabricChart() {
     if (!ctx) return;
 
     new Chart(ctx, {
-        type: 'polarArea',
+        type: 'doughnut',
         data: {
             labels: DATA.fabricDistribution.labels,
             datasets: [{
@@ -134,14 +135,9 @@ function renderFabricChart() {
             responsive: true,
             maintainAspectRatio: true,
             aspectRatio: 1.5,
+            cutout: '62%',
             plugins: {
                 legend: { position: 'bottom' },
-            },
-            scales: {
-                r: {
-                    ticks: { display: false },
-                    grid: { color: 'rgba(232,224,216,0.4)' },
-                }
             }
         }
     });

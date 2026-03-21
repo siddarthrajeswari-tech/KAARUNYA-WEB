@@ -212,22 +212,22 @@ function timeAgo(dateStr) {
 
 // Chart color palette
 const CHART_COLORS = {
-    primary: 'rgba(196, 168, 130, 1)',
-    primaryBg: 'rgba(196, 168, 130, 0.15)',
-    brown: 'rgba(139, 115, 85, 1)',
-    brownBg: 'rgba(139, 115, 85, 0.15)',
-    accent: 'rgba(212, 165, 116, 1)',
-    accentBg: 'rgba(212, 165, 116, 0.15)',
-    danger: 'rgba(201, 115, 107, 1)',
-    dangerBg: 'rgba(201, 115, 107, 0.15)',
-    success: 'rgba(107, 158, 118, 1)',
-    successBg: 'rgba(107, 158, 118, 0.15)',
+    primary: 'rgba(37, 99, 235, 1)',
+    primaryBg: 'rgba(37, 99, 235, 0.16)',
+    brown: 'rgba(29, 78, 216, 1)',
+    brownBg: 'rgba(29, 78, 216, 0.16)',
+    accent: 'rgba(59, 130, 246, 1)',
+    accentBg: 'rgba(59, 130, 246, 0.14)',
+    danger: 'rgba(239, 68, 68, 1)',
+    dangerBg: 'rgba(239, 68, 68, 0.15)',
+    success: 'rgba(34, 197, 94, 1)',
+    successBg: 'rgba(34, 197, 94, 0.15)',
     fabrics: [
-        'rgba(196, 168, 130, 0.85)',
-        'rgba(212, 165, 116, 0.85)',
-        'rgba(139, 115, 85, 0.85)',
-        'rgba(107, 158, 118, 0.85)',
-        'rgba(201, 115, 107, 0.85)',
+        'rgba(37, 99, 235, 0.9)',
+        'rgba(59, 130, 246, 0.88)',
+        'rgba(96, 165, 250, 0.86)',
+        'rgba(147, 197, 253, 0.82)',
+        'rgba(191, 219, 254, 0.9)',
     ],
 };
 
@@ -235,14 +235,14 @@ const CHART_COLORS = {
 if (typeof Chart !== 'undefined') {
     Chart.defaults.font.family = "'Inter', sans-serif";
     Chart.defaults.font.size = 12;
-    Chart.defaults.color = '#7A6E62';
+    Chart.defaults.color = '#64748b';
     Chart.defaults.plugins.legend.labels.usePointStyle = true;
     Chart.defaults.plugins.legend.labels.padding = 16;
-    Chart.defaults.plugins.tooltip.backgroundColor = '#2E2820';
+    Chart.defaults.plugins.tooltip.backgroundColor = '#0f172a';
     Chart.defaults.plugins.tooltip.titleFont = { weight: '600' };
     Chart.defaults.plugins.tooltip.padding = 12;
     Chart.defaults.plugins.tooltip.cornerRadius = 8;
-    Chart.defaults.scale.grid = { color: 'rgba(232, 224, 216, 0.6)' };
+    Chart.defaults.scale.grid = { color: 'rgba(226, 232, 240, 0.9)' };
     Chart.defaults.scale.border = { dash: [4, 4] };
 }
 
