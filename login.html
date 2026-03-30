@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Login to Kaarunya Dress Shop Inventory Management System">
+    <title>Kaarunya | Login</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body class="login-page">
+    <div class="login-card">
+        <div class="login-header">
+            <i class="fas fa-gem logo-icon"></i>
+            <h1>Kaarunya</h1>
+            <p>Dress Shop</p>
+        </div>
+
+        <!-- LOGIN VIEW -->
+        <div class="login-body" id="loginView">
+            <h3
+                style="font-family: var(--font-display); font-size: 1.3rem; color: var(--clr-primary-800); margin-bottom: var(--space-sm);">
+                Welcome Back</h3>
+            <p style="font-size: 0.85rem; color: var(--clr-text-muted); margin-bottom: var(--space-xl);">Sign in to your
+                inventory management account</p>
+
+            <div class="login-error" id="loginError">
+                <i class="fas fa-exclamation-circle"></i>
+                <span id="loginErrorText">Invalid credentials</span>
+            </div>
+
+            <form id="loginForm" onsubmit="return false;">
+                <div class="form-group">
+                    <label class="form-label" for="username"><i class="fas fa-user"
+                            style="margin-right: 6px; color: var(--clr-primary-400);"></i>Username</label>
+                    <input type="text" class="form-control" id="username" placeholder="Enter your username"
+                        autocomplete="username" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="password"><i class="fas fa-lock"
+                            style="margin-right: 6px; color: var(--clr-primary-400);"></i>Password</label>
+                    <input type="password" class="form-control" id="password" placeholder="Enter your password"
+                        autocomplete="current-password" required>
+                </div>
+                <!-- 2FA Code (shown when needed) -->
+                <div class="form-group" id="totpGroup" style="display:none;">
+                    <label class="form-label" for="totpCode"><i class="fas fa-shield-alt"
+                            style="margin-right: 6px; color: var(--clr-primary-400);"></i>2FA Code</label>
+                    <input type="text" class="form-control" id="totpCode" placeholder="Enter 6-digit code"
+                        autocomplete="one-time-code" maxlength="6" inputmode="numeric"
+                        style="text-align:center; letter-spacing: 6px; font-size: 1.2rem; font-weight: 600;">
+                </div>
+                <button type="submit" class="btn btn-primary" id="loginBtn">
+                    <i class="fas fa-sign-in-alt"></i> Sign In
+                </button>
+            </form>
+
+            <div style="text-align: center; margin-top: var(--space-lg);">
+                <button class="btn-text" id="showForgotPassword"
+                    style="font-size: 0.85rem; color: var(--clr-primary-500); cursor: pointer; border: none; background: none;">
+                    <i class="fas fa-key" style="margin-right: 4px;"></i> Forgot Password?
+                </button>
+            </div>
+
+            <div
+                style="text-align: center; margin-top: var(--space-lg); padding-top: var(--space-lg); border-top: 1px solid var(--clr-border);">
+                <p style="font-size: 0.78rem; color: var(--clr-text-muted);">Demo Credentials</p>
+                <p style="font-size: 0.82rem; color: var(--clr-text-secondary); margin-top: 4px;">
+                    <strong>Admin:</strong> admin / kaarumayil@10 &nbsp;|&nbsp;
+                    <strong>Staff:</strong> staff1 / staff123
+                </p>
+            </div>
+        </div>
+
+        <!-- FORGOT PASSWORD VIEW -->
+        <div class="login-body" id="forgotView" style="display:none;">
+            <h3
+                style="font-family: var(--font-display); font-size: 1.3rem; color: var(--clr-primary-800); margin-bottom: var(--space-sm);">
+                Reset Password</h3>
+            <p style="font-size: 0.85rem; color: var(--clr-text-muted); margin-bottom: var(--space-xl);">Enter your
+                username to receive a reset token</p>
+
+            <div class="login-error" id="forgotError">
+                <i class="fas fa-exclamation-circle"></i>
+                <span id="forgotErrorText"></span>
+            </div>
+            <div class="login-success" id="forgotSuccess" style="display:none;">
+                <i class="fas fa-check-circle" style="color: var(--clr-success);"></i>
+                <span id="forgotSuccessText"></span>
+            </div>
+
+            <form id="forgotForm" onsubmit="return false;">
+                <div class="form-group">
+                    <label class="form-label" for="forgotUsername"><i class="fas fa-user"
+                            style="margin-right: 6px; color: var(--clr-primary-400);"></i>Username</label>
+                    <input type="text" class="form-control" id="forgotUsername" placeholder="Enter your username"
+                        required>
+                </div>
+                <button type="submit" class="btn btn-primary" id="forgotBtn">
+                    <i class="fas fa-paper-plane"></i> Get Reset Token
+                </button>
+            </form>
+
+            <!-- Reset token result -->
+            <div id="resetTokenResult" style="display:none; margin-top: var(--space-lg);">
+                <div
+                    style="background: var(--clr-bg-secondary); border-radius: 8px; padding: var(--space-md); border: 1px solid var(--clr-border);">
+                    <p style="font-size: 0.8rem; color: var(--clr-text-muted); margin-bottom: 4px;">Your Reset Token:
+                    </p>
+                    <code id="resetTokenValue"
+                        style="word-break: break-all; font-size: 0.75rem; color: var(--clr-primary-600); display: block; padding: 8px; background: var(--clr-bg-main); border-radius: 4px; margin-top: 4px;"></code>
+                    <p style="font-size: 0.75rem; color: var(--clr-text-muted); margin-top: 8px;">⚠️ Token expires in 1
+                        hour. In production, this would be sent via email.</p>
+                </div>
+            </div>
+
+            <!-- Reset Password Form -->
+            <div id="resetFormSection"
+                style="display:none; margin-top: var(--space-lg); padding-top: var(--space-lg); border-top: 1px solid var(--clr-border);">
+                <h4
+                    style="font-family: var(--font-display); font-size: 1.1rem; color: var(--clr-primary-700); margin-bottom: var(--space-md);">
+                    Set New Password</h4>
+                <form id="resetForm" onsubmit="return false;">
+                    <div class="form-group">
+                        <label class="form-label" for="resetToken"><i class="fas fa-key"
+                                style="margin-right: 6px; color: var(--clr-primary-400);"></i>Reset Token</label>
+                        <input type="text" class="form-control" id="resetToken" placeholder="Paste your reset token"
+                            required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="resetNewPassword"><i class="fas fa-lock"
+                                style="margin-right: 6px; color: var(--clr-primary-400);"></i>New Password</label>
+                        <input type="password" class="form-control" id="resetNewPassword" placeholder="Min 6 characters"
+                            minlength="6" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary" id="resetBtn">
+                        <i class="fas fa-save"></i> Reset Password
+                    </button>
+                </form>
+            </div>
+
+            <div style="text-align: center; margin-top: var(--space-lg);">
+                <button class="btn-text" id="backToLogin"
+                    style="font-size: 0.85rem; color: var(--clr-primary-500); cursor: pointer; border: none; background: none;">
+                    <i class="fas fa-arrow-left" style="margin-right: 4px;"></i> Back to Login
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ---- Login Form ----
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('loginBtn');
+            const errorEl = document.getElementById('loginError');
+            const errorText = document.getElementById('loginErrorText');
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Signing in...';
+            errorEl.classList.remove('show');
+
+            try {
+                const payload = {
+                    username: document.getElementById('username').value.trim(),
+                    password: document.getElementById('password').value,
+                };
+
+                // Include TOTP code if visible
+                const totpInput = document.getElementById('totpCode');
+                if (document.getElementById('totpGroup').style.display !== 'none') {
+                    payload.totpCode = totpInput.value.trim();
+                }
+
+                const res = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                    credentials: 'include',
+                });
+
+                const data = await res.json();
+
+                if (data.requires2FA) {
+                    // Show 2FA input
+                    document.getElementById('totpGroup').style.display = 'block';
+                    totpInput.focus();
+                    errorText.textContent = 'Please enter your 2FA code from your authenticator app.';
+                    errorEl.classList.add('show');
+                    errorEl.style.borderColor = 'var(--clr-primary-400)';
+                    errorEl.style.background = 'var(--clr-primary-50, #f5f0eb)';
+                    errorEl.querySelector('i').className = 'fas fa-shield-alt';
+                    errorEl.querySelector('i').style.color = 'var(--clr-primary-500)';
+                    errorText.style.color = 'var(--clr-primary-700)';
+                } else if (res.ok) {
+                    window.location.href = '/index.html';
+                } else {
+                    errorText.textContent = data.error || 'Login failed';
+                    errorEl.classList.add('show');
+                    errorEl.style.borderColor = '';
+                    errorEl.style.background = '';
+                    errorEl.querySelector('i').className = 'fas fa-exclamation-circle';
+                    errorEl.querySelector('i').style.color = '';
+                    errorText.style.color = '';
+                }
+            } catch (err) {
+                errorText.textContent = 'Connection failed. Please try again.';
+                errorEl.classList.add('show');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Sign In';
+            }
+        });
+
+        // ---- Toggle Forgot Password ----
+        document.getElementById('showForgotPassword').addEventListener('click', () => {
+            document.getElementById('loginView').style.display = 'none';
+            document.getElementById('forgotView').style.display = 'block';
+        });
+
+        document.getElementById('backToLogin').addEventListener('click', () => {
+            document.getElementById('loginView').style.display = 'block';
+            document.getElementById('forgotView').style.display = 'none';
+        });
+
+        // ---- Forgot Password Form ----
+        document.getElementById('forgotForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('forgotBtn');
+            const errorEl = document.getElementById('forgotError');
+            const successEl = document.getElementById('forgotSuccess');
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+            errorEl.classList.remove('show');
+            successEl.style.display = 'none';
+
+            try {
+                const res = await fetch('/api/auth/forgot-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: document.getElementById('forgotUsername').value.trim(),
+                    }),
+                });
+
+                const data = await res.json();
+
+                if (res.ok) {
+                    if (data.token) {
+                        // Show token (demo mode)
+                        document.getElementById('resetTokenValue').textContent = data.token;
+                        document.getElementById('resetTokenResult').style.display = 'block';
+                        document.getElementById('resetFormSection').style.display = 'block';
+                        document.getElementById('resetToken').value = data.token;
+                    }
+                    document.getElementById('forgotSuccessText').textContent = data.message;
+                    successEl.style.display = 'flex';
+                } else {
+                    document.getElementById('forgotErrorText').textContent = data.error;
+                    errorEl.classList.add('show');
+                }
+            } catch (err) {
+                document.getElementById('forgotErrorText').textContent = 'Connection failed.';
+                errorEl.classList.add('show');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-paper-plane"></i> Get Reset Token';
+            }
+        });
+
+        // ---- Reset Password Form ----
+        document.getElementById('resetForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('resetBtn');
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Resetting...';
+
+            try {
+                const res = await fetch('/api/auth/reset-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        token: document.getElementById('resetToken').value.trim(),
+                        newPassword: document.getElementById('resetNewPassword').value,
+                    }),
+                });
+
+                const data = await res.json();
+
+                if (res.ok) {
+                    document.getElementById('forgotSuccessText').textContent = data.message;
+                    document.getElementById('forgotSuccess').style.display = 'flex';
+                    document.getElementById('resetFormSection').style.display = 'none';
+                    document.getElementById('resetTokenResult').style.display = 'none';
+                    setTimeout(() => {
+                        document.getElementById('loginView').style.display = 'block';
+                        document.getElementById('forgotView').style.display = 'none';
+                    }, 2000);
+                } else {
+                    alert(data.error || 'Reset failed');
+                }
+            } catch (err) {
+                alert('Connection failed.');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-save"></i> Reset Password';
+            }
+        });
+
+        // ---- Check if already logged in ----
+        (async () => {
+            try {
+                const res = await fetch('/api/auth/me', { credentials: 'include' });
+                if (res.ok) window.location.href = '/index.html';
+            } catch (e) { /* not logged in */ }
+        })();
+    </script>
+</body>
+
+</html>
