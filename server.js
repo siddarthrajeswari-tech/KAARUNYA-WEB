@@ -45,6 +45,7 @@ app.use(session({
 
 // Serve static frontend files
 app.use(express.static(path.join(__dirname, 'public')));
+app.use('/assets', express.static(path.join(__dirname, 'assets')));
 
 // ---- API Routes ----
 app.use('/api/auth', authRoutes);

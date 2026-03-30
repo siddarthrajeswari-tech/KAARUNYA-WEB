@@ -172,7 +172,30 @@ function initNotifications() {
     }
     if (markAll) {
         markAll.addEventListener('click', () => {
-            document.querySelectorAll('.notification-item.unread').forEach(el => el.classList.remove('unread'));
+            // Clear all notifications with fade out animation
+            const notificationList = document.querySelector('.notification-list');
+            const items = document.querySelectorAll('.notification-item');
+            
+            items.forEach((item, index) => {
+                setTimeout(() => {
+                    item.style.animation = 'fadeOut 0.3s ease forwards';
+                    setTimeout(() => item.remove(), 300);
+                }, index * 50);
+            });
+
+            // Show empty state message after a short delay
+            setTimeout(() => {
+                if (notificationList && notificationList.children.length === 0) {
+                    notificationList.innerHTML = '<div class="empty-notification"><p>All notifications cleared</p></div>';
+                    setTimeout(() => {
+                        const emptyMsg = document.querySelector('.empty-notification');
+                        if (emptyMsg) {
+                            emptyMsg.style.animation = 'fadeOut 0.3s ease forwards';
+                            setTimeout(() => emptyMsg.remove(), 300);
+                        }
+                    }, 2000);
+                }
+            }, items.length * 50 + 100);
         });
     }
 }
@@ -209,22 +232,22 @@ function initTableSort(tableId) {
 
 // Chart color palette
 const CHART_COLORS = {
-    primary:    'rgba(37, 99, 235, 1)',
-    primaryBg:  'rgba(37, 99, 235, 0.16)',
-    brown:      'rgba(29, 78, 216, 1)',
-    brownBg:    'rgba(29, 78, 216, 0.16)',
-    accent:     'rgba(59, 130, 246, 1)',
-    accentBg:   'rgba(59, 130, 246, 0.14)',
+    primary:    'rgba(59, 130, 246, 1)',
+    primaryBg:  'rgba(59, 130, 246, 0.16)',
+    brown:      'rgba(37, 99, 235, 1)',
+    brownBg:    'rgba(37, 99, 235, 0.16)',
+    accent:     'rgba(96, 165, 250, 1)',
+    accentBg:   'rgba(96, 165, 250, 0.14)',
     danger:     'rgba(239, 68, 68, 1)',
     dangerBg:   'rgba(239, 68, 68, 0.15)',
     success:    'rgba(34, 197, 94, 1)',
     successBg:  'rgba(34, 197, 94, 0.15)',
     fabrics: [
-        'rgba(37, 99, 235, 0.9)',
-        'rgba(59, 130, 246, 0.88)',
-        'rgba(96, 165, 250, 0.86)',
-        'rgba(147, 197, 253, 0.82)',
-        'rgba(191, 219, 254, 0.9)',
+        'rgba(247, 144, 77, 0.9)',     // Cotton - Orange
+        'rgba(168, 85, 247, 0.9)',     // Rayon - Purple
+        'rgba(236, 72, 153, 0.9)',     // Silk - Pink/Rose
+        'rgba(34, 197, 94, 0.9)',      // Linen - Green
+        'rgba(59, 130, 246, 0.9)',     // Denim - Blue
     ],
 };
 
