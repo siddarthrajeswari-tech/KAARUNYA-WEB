@@ -195,16 +195,19 @@ table {
 .sidebar-header {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: center;
+    position: relative;
     padding: var(--space-lg) var(--space-md);
     border-bottom: 1px solid rgba(148, 163, 184, 0.1);
 }
 
 .sidebar-logo {
-    width: 80px; 
-    height: 80px;
+    width: 60px; 
+    height: 60px;
     border-radius: 50%;
     background-color: #fff;
+    border: 1px solid var(--clr-border);
+    box-shadow: var(--shadow-sm);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -219,10 +222,9 @@ table {
 }
 
 .sidebar-logo-img {
-    width: 100%;
-    height: 100%;
+    max-width: 90%;
+    height: auto;
     object-fit: contain;
-    padding: 10%;
     transition: transform var(--transition-med);
 }
 
@@ -272,6 +274,8 @@ table {
 }
 
 .sidebar-toggle {
+    position: absolute;
+    right: var(--space-md);
     color: var(--sidebar-text);
     font-size: 0.85rem;
     width: 28px;

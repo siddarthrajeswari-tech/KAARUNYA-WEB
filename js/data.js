@@ -136,6 +136,22 @@ function initSidebar() {
     const toggle = document.getElementById('sidebarToggle');
     const mobileBtn = document.getElementById('mobileMenuBtn');
     const overlay = document.getElementById('overlay');
+    const settingsBtn = document.getElementById('settingsBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+
+    if (settingsBtn) {
+        settingsBtn.addEventListener('click', () => {
+            window.location.href = 'settings.html';
+        });
+    }
+
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', () => {
+            if (confirm('Are you sure you want to logout?')) {
+                window.location.href = 'login.html';
+            }
+        });
+    }
 
     if (toggle) {
         toggle.addEventListener('click', () => {

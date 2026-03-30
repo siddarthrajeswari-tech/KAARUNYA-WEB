@@ -252,6 +252,13 @@ function initSidebar() {
     const toggle = document.getElementById('sidebarToggle');
     const mobileBtn = document.getElementById('mobileMenuBtn');
     const overlay = document.getElementById('overlay');
+    const settingsBtn = document.getElementById('settingsBtn');
+
+    if (settingsBtn) {
+        settingsBtn.addEventListener('click', () => {
+            window.location.href = 'settings.html';
+        });
+    }
 
     if (toggle) {
         toggle.addEventListener('click', () => sidebar.classList.toggle('collapsed'));
