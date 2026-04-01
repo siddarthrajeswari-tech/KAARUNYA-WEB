@@ -180,14 +180,26 @@ function initNotifications() {
     const overlay = document.getElementById('overlay');
     const markAll = document.getElementById('markAllRead');
 
+    // Check localStorage for notification state
+    const isNotificationsRead = localStorage.getItem('notificationsRead') === 'true';
+
+    if (isNotificationsRead) {
+        document.querySelectorAll('.notification-dot').forEach(el => el.style.display = 'none');
+        document.querySelectorAll('.notification-item').forEach(item => item.remove());
+    }
+
     if (btn && panel) {
         btn.addEventListener('click', () => {
             panel.classList.toggle('active');
-            overlay.classList.toggle('active');
+            if (overlay) overlay.classList.toggle('active');
         });
     }
     if (markAll) {
         markAll.addEventListener('click', () => {
+            localStorage.setItem('notificationsRead', 'true');
+            // Hide the notification dot
+            document.querySelectorAll('.notification-dot').forEach(el => el.style.display = 'none');
+
             // Clear all notifications with fade out animation
             const notificationList = document.querySelector('.notification-list');
             const items = document.querySelectorAll('.notification-item');
@@ -259,11 +271,12 @@ const CHART_COLORS = {
     success:    'rgba(34, 197, 94, 1)',
     successBg:  'rgba(34, 197, 94, 0.15)',
     fabrics: [
-        'rgba(247, 144, 77, 0.9)',     // Cotton - Orange
-        'rgba(168, 85, 247, 0.9)',     // Rayon - Purple
-        'rgba(236, 72, 153, 0.9)',     // Silk - Pink/Rose
-        'rgba(34, 197, 94, 0.9)',      // Linen - Green
-        'rgba(59, 130, 246, 0.9)',     // Denim - Blue
+        'rgba(236, 72, 153, 0.85)',   // Pink
+        'rgba(139, 92, 246, 0.85)',   // Purple
+        'rgba(16, 185, 129, 0.85)',   // Emerald Green
+        'rgba(245, 158, 11, 0.85)',   // Amber
+        'rgba(59, 130, 246, 0.85)',   // Blue
+        'rgba(239, 68, 68, 0.85)',    // Red
     ],
 };
 

@@ -195,8 +195,72 @@ async function initOrderModal() {
             showToast(e.message, 'error');
         }
     });
-}
 
+    // Bi-directional filtering logic
+    supplierSelect.addEventListener('change', () => {
+        const selectedSupplier = supplierSelect.value;
+        // Update all existing product dropdowns
+        document.querySelectorAll('.item-product').forEach(sel => {
+            const currentVal = sel.value;
+            sel.innerHTML = '<option value="">-- Choose Product --</option>' + cachedProducts
+                .filter(p => !selectedSupplier || p.supplier_id === selectedSupplier)
+                .map(p => `<option value="${p.id}" ${p.id === currentVal ? 'selected' : ''}>${p.name}</option>`)
+                .join('');
+            
+            // If the previously selected product is no longer in the list (because it belongs to another supplier), clear it
+            if (currentVal && !Array.from(sel.options).some(opt => opt.value === currentVal)) {
+                sel.value = '';
+            }
+        });
+    });
+
+    document.getElementById('orderItems').addEventListener('change', (e) => {
+        if (e.target.classList.contains('item-product')) {
+            const selectedProductId = e.target.value;
+            if (selectedProductId) {
+                const product = cachedProducts.find(p => p.id === selectedProductId);
+                if (product && product.supplier_id) {
+                    // Set the supplier to match the selected product
+                    supplierSelect.value = product.supplier_id;
+                    // Trigger the supplier change event to filter other product dropdowns
+                    supplierSelect.dispatchEvent(new Event('change'));
+                }
+            }
+            
+            // Auto-fill price when product is selected
+            const row = e.target.closest('.order-item-row');
+            const priceInput = row.querySelector('.item-price');
+            if (selectedProductId && !priceInput.value) {
+                const product = cachedProducts.find(p => p.id === selectedProductId);
+                if (product) {
+                    priceInput.value = product.price || 0;
+                    recalcRow(row);
+                    recalcOrder();
+                }
+            }
+        }
+    });
+
+    // Reset Filters functionality
+    document.getElementById('resetOrderFilters').addEventListener('click', (e) => {
+        e.preventDefault();
+        supplierSelect.value = '';
+        
+        // Reset all product dropdowns back to full list
+        const opts = '<option value="">-- Choose Product --</option>' + cachedProducts.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+        document.querySelectorAll('.item-product').forEach(sel => {
+            sel.innerHTML = opts;
+            sel.value = '';
+            
+            // Reset price and subtotal for each row
+            const row = sel.closest('.order-item-row');
+            row.querySelector('.item-price').value = '';
+            recalcRow(row);
+        });
+        recalcOrder();
+    });
+}
+let cachedProducts = [];
 function addItemRow() {
     const container = document.getElementById('orderItems');
     const row = document.createElement('div');
@@ -213,9 +277,20 @@ function addItemRow() {
 
 async function populateProductSelects() {
     try {
-        const { data } = await API.products.list();
-        const opts = data.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
-        document.querySelectorAll('.item-product').forEach(sel => { if (!sel.innerHTML) sel.innerHTML = opts; });
+        if (cachedProducts.length === 0) {
+            const { data } = await API.products.list();
+            cachedProducts = data;
+        }
+        
+        const supplierSelect = document.getElementById('orderSupplier');
+        const selectedSupplier = supplierSelect ? supplierSelect.value : '';
+        
+        const filteredProducts = cachedProducts.filter(p => !selectedSupplier || p.supplier_id === selectedSupplier);
+        const opts = '<option value="">-- Choose Product --</option>' + filteredProducts.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+        
+        document.querySelectorAll('.item-product').forEach(sel => { 
+            if (!sel.innerHTML) sel.innerHTML = opts; 
+        });
     } catch (e) { console.error(e); }
 }
 

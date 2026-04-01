@@ -117,7 +117,7 @@
             </div>
 
             <div class="data-card">
-                <div class="table-wrapper">
+                <div class="table-responsive">
                     <table class="data-table" id="supplierTable">
                         <thead>
                             <tr>
@@ -126,6 +126,7 @@
                                 <th>Address</th>
                                 <th>Phone</th>
                                 <th>Email</th>
+                                <th>Products</th>
                                 <th>Status</th>
                                 <th>Actions</th>
                             </tr>
@@ -139,6 +140,36 @@
             </div>
         </div>
     </main>
+
+    <!-- View Supplier Modal -->
+    <div class="modal-overlay" id="viewSupplierModal">
+        <div class="modal" style="max-width: 700px;">
+            <div class="modal-header">
+                <h3>Supplier Details</h3>
+                <button class="modal-close" id="closeViewModal"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <div id="supplierDetailHeader" style="margin-bottom: var(--space-md);"></div>
+                <h4 style="margin: 20px 0 10px; color: var(--clr-primary-800);">Products Supplied</h4>
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Product ID</th>
+                                <th>Name</th>
+                                <th>Category</th>
+                                <th>Price</th>
+                            </tr>
+                        </thead>
+                        <tbody id="supplier-product-list"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="closeViewModalBtn">Close</button>
+            </div>
+        </div>
+    </div>
 
     <!-- Add/Edit Supplier Modal -->
     <div class="modal-overlay" id="supplierModal">

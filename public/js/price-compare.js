@@ -15,12 +15,55 @@ document.addEventListener('DOMContentLoaded', async () => {
     ]);
 });
 
+const EXAMPLE_PRICE_COMPARE_LIST = {
+    'Cotton Saree': [
+        { supplier: 'Anbu Textiles', price: 780, best: false },
+        { supplier: 'Madura Fabrics', price: 740, best: true },
+        { supplier: 'Sri Garments Hub', price: 790, best: false },
+    ],
+    'Designer Kurti': [
+        { supplier: 'Anbu Textiles', price: 560, best: true },
+        { supplier: 'Madura Fabrics', price: 585, best: false },
+        { supplier: 'Sri Garments Hub', price: 575, best: false },
+    ],
+    'Kids Frock': [
+        { supplier: 'Anbu Textiles', price: 320, best: false },
+        { supplier: 'Madura Fabrics', price: 305, best: true },
+        { supplier: 'Sri Garments Hub', price: 335, best: false },
+    ],
+};
+
+function getListWithFallback(data) {
+    return data && Object.keys(data).length ? data : EXAMPLE_PRICE_COMPARE_LIST;
+}
+
+function toFlatRows(groupedData) {
+    const rows = [];
+    Object.entries(groupedData).forEach(([product, suppliers]) => {
+        const avg = suppliers.reduce((sum, s) => sum + Number(s.price || 0), 0) / suppliers.length;
+        suppliers.forEach((s) => {
+            const savings = Math.round(avg - Number(s.price || 0));
+            const savingsPercent = avg > 0 ? ((avg - Number(s.price || 0)) / avg * 100).toFixed(1) : '0.0';
+            rows.push({
+                product_name: product,
+                supplier_name: s.supplier,
+                price: Number(s.price || 0),
+                best: Boolean(s.best),
+                savings,
+                savingsPercent,
+            });
+        });
+    });
+    return rows;
+}
+
 async function loadComparisonCards() {
     try {
         const { data } = await API.priceCompare.list();
+        const safeData = getListWithFallback(data);
         const grid = document.getElementById('comparisonGrid');
 
-        grid.innerHTML = Object.entries(data).map(([product, suppliers]) => {
+        grid.innerHTML = Object.entries(safeData).map(([product, suppliers]) => {
             const rows = suppliers.map(s => `
                 <div class="comparison-row">
                     <span class="comparison-supplier">${s.supplier}</span>
@@ -44,7 +87,12 @@ async function loadComparisonCards() {
 
 async function loadPriceTable() {
     try {
-        const { data } = await API.priceCompare.flat();
+        const listResponse = await API.priceCompare.list();
+        const listData = getListWithFallback(listResponse.data);
+        const apiFlat = await API.priceCompare.flat();
+        const data = Array.isArray(apiFlat.data) && apiFlat.data.length > 0
+            ? apiFlat.data
+            : toFlatRows(listData);
         const tbody = document.getElementById('priceTableBody');
 
         tbody.innerHTML = data.map(r => `
@@ -68,11 +116,27 @@ async function loadPriceChart() {
 
     try {
         const { data } = await API.priceCompare.list();
-        const products = Object.keys(data);
+        const safeData = getListWithFallback(data);
+        const products = Object.keys(safeData);
 
-        const allSuppliers = new Set();
-        Object.values(data).forEach(sups => sups.forEach(s => allSuppliers.add(s.supplier)));
-        const supplierList = Array.from(allSuppliers);
+        const supplierStats = {};
+        Object.values(safeData).forEach((sups) => {
+            sups.forEach((s) => {
+                if (!supplierStats[s.supplier]) {
+                    supplierStats[s.supplier] = { count: 0 };
+                }
+                supplierStats[s.supplier].count += 1;
+            });
+        });
+
+        let supplierList = Object.entries(supplierStats)
+            .sort((a, b) => b[1].count - a[1].count)
+            .map(([name]) => name)
+            .slice(0, 4);
+
+        if (supplierList.length === 0) {
+            supplierList = ['No Data'];
+        }
 
         const colors = [
             { bg: 'rgba(196, 168, 130, 0.7)', border: 'rgba(196, 168, 130, 1)' },
@@ -86,8 +150,8 @@ async function loadPriceChart() {
         const datasets = supplierList.map((supplier, i) => ({
             label: supplier,
             data: products.map(prod => {
-                const entry = data[prod].find(s => s.supplier === supplier);
-                return entry ? entry.price : 0;
+                const entry = safeData[prod].find(s => s.supplier === supplier);
+                return entry ? entry.price : null;
             }),
             backgroundColor: colors[i % colors.length].bg,
             borderColor: colors[i % colors.length].border,

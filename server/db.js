@@ -144,7 +144,12 @@ function initDatabase() {
             created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
         );
-
+        -- Settings / Shop Info
+        CREATE TABLE IF NOT EXISTS settings (
+            key         TEXT PRIMARY KEY,
+            value       TEXT NOT NULL,
+            updated_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
         -- Create indexes for performance
         CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);
         CREATE INDEX IF NOT EXISTS idx_products_fabric ON products(fabric);

@@ -92,29 +92,47 @@ function initPasswordChange() {
     });
 }
 
-function initShopForm() {
-    document.getElementById('shopForm').addEventListener('submit', (e) => {
+async function initShopForm() {
+    document.getElementById('shopForm').addEventListener('submit', async (e) => {
         e.preventDefault();
-        const shopData = {
-            name: document.getElementById('shopName').value,
-            phone: document.getElementById('shopPhone').value,
-            address: document.getElementById('shopAddress').value,
-            email: document.getElementById('shopEmail').value,
-            gst: document.getElementById('shopGst').value,
-        };
-        localStorage.setItem('kaarunya_shop_info', JSON.stringify(shopData));
-        showToast('Shop information saved!');
+        try {
+            const btn = document.querySelector('#shopForm button[type="submit"]');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+            btn.disabled = true;
+
+            const shopData = {
+                shop_name: document.getElementById('shopName').value,
+                shop_phone: document.getElementById('shopPhone').value,
+                shop_address: document.getElementById('shopAddress').value,
+                shop_email: document.getElementById('shopEmail').value,
+                shop_gst: document.getElementById('shopGst').value,
+            };
+            
+            await API.dashboard.saveSettings(shopData);
+            showToast('Shop information saved!');
+            
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        } catch (err) {
+            showToast(err.message, 'error');
+            const btn = document.querySelector('#shopForm button[type="submit"]');
+            btn.innerHTML = '<i class="fas fa-save"></i> Save Shop Info';
+            btn.disabled = false;
+        }
     });
 
-    // Load saved shop info
-    const saved = localStorage.getItem('kaarunya_shop_info');
-    if (saved) {
-        const data = JSON.parse(saved);
-        document.getElementById('shopName').value = data.name || '';
-        document.getElementById('shopPhone').value = data.phone || '';
-        document.getElementById('shopAddress').value = data.address || '';
-        document.getElementById('shopEmail').value = data.email || '';
-        document.getElementById('shopGst').value = data.gst || '';
+    try {
+        const { data } = await API.dashboard.getSettings();
+        if (data) {
+            document.getElementById('shopName').value = data.shop_name || '';
+            document.getElementById('shopPhone').value = data.shop_phone || '';
+            document.getElementById('shopAddress').value = data.shop_address || '';
+            document.getElementById('shopEmail').value = data.shop_email || '';
+            document.getElementById('shopGst').value = data.shop_gst || '';
+        }
+    } catch (e) {
+        console.error('Failed to load shop info', e);
     }
 }
 
@@ -123,19 +141,7 @@ function initDataManagement() {
     document.getElementById('exportDataBtn').addEventListener('click', async () => {
         try {
             showToast('Exporting data...', 'info');
-            const [suppliers, products, orders] = await Promise.all([
-                API.suppliers.list(),
-                API.products.list(),
-                API.orders.list(),
-            ]);
-
-            const exportData = {
-                exportDate: new Date().toISOString(),
-                version: '2.0.0',
-                suppliers: suppliers.data,
-                products: products.data,
-                orders: orders.data,
-            };
+            const exportData = await API.dashboard.exportDb();
 
             const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
@@ -157,10 +163,18 @@ function initDataManagement() {
     });
 
     // Reset
-    document.getElementById('resetDataBtn').addEventListener('click', () => {
+    document.getElementById('resetDataBtn').addEventListener('click', async () => {
         if (!confirm('⚠️ Are you sure you want to reset ALL data?\n\nThis will delete all your inventory data and replace it with sample data. This action CANNOT be undone!')) return;
         if (!confirm('FINAL WARNING: This will permanently delete all your data. Type OK to confirm.')) return;
-        showToast('To reset, run "npm run seed" in the terminal and restart the server.', 'info');
+        
+        try {
+            showToast('Resetting database...', 'info');
+            await API.dashboard.resetDb();
+            showToast('Database reset successfully!', 'success');
+            setTimeout(() => window.location.reload(), 2000);
+        } catch (err) {
+            showToast('Reset failed: ' + err.message, 'error');
+        }
     });
 }
 

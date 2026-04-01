@@ -87,16 +87,16 @@ function renderStockChart() {
             datasets: [{
                 data: DATA.stockByCategory.values,
                 backgroundColor: [
-                    'rgba(59, 130, 246, 0.9)',
-                    'rgba(37, 99, 235, 0.85)',
-                    'rgba(96, 165, 250, 0.8)',
-                    'rgba(147, 197, 253, 0.75)'
+                    'rgba(59, 130, 246, 0.85)',   // Blue
+                    'rgba(236, 72, 153, 0.85)',   // Pink
+                    'rgba(16, 185, 129, 0.85)',   // Green
+                    'rgba(245, 158, 11, 0.85)'    // Orange
                 ],
                 borderColor: [
                     'rgba(59, 130, 246, 1)',
-                    'rgba(37, 99, 235, 1)',
-                    'rgba(96, 165, 250, 1)',
-                    'rgba(147, 197, 253, 1)'
+                    'rgba(236, 72, 153, 1)',
+                    'rgba(16, 185, 129, 1)',
+                    'rgba(245, 158, 11, 1)'
                 ],
                 borderWidth: 1,
                 borderRadius: 8,

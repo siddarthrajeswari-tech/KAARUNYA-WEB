@@ -222,17 +222,20 @@ router.put('/change-password', (req, res) => {
 
         const db = getDb();
         const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.session.user.id);
+        
+        if (!user) {
+             return res.status(404).json({ error: 'User not found.' });
+        }
+        
         if (!bcrypt.compareSync(currentPassword, user.password)) {
             return res.status(401).json({ error: 'Current password is incorrect.' });
         }
 
         const hashed = bcrypt.hashSync(newPassword, 10);
         db.prepare('UPDATE users SET password = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(hashed, user.id);
-
-        logActivity(db, 'password_changed', 'user', String(user.id),
-            `User ${user.username} changed their password`, user.id);
-
-        res.json({ message: 'Password changed successfully.' });
+        
+        // Return 200 explicitly so client knows it was successful
+        return res.status(200).json({ message: 'Password changed successfully.' });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

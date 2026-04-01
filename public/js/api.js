@@ -140,6 +140,10 @@ const API = {
         summary: () => API.get('/dashboard/summary'),
         activity: (limit) => API.get(`/dashboard/activity?limit=${limit || 10}`),
         topProducts: () => API.get('/dashboard/top-products'),
+        getSettings: () => API.get('/dashboard/settings'),
+        saveSettings: (data) => API.post('/dashboard/settings', data),
+        exportDb: () => API.get('/dashboard/export'),
+        resetDb: () => API.post('/dashboard/reset'),
     },
 };
 
@@ -223,11 +227,12 @@ const CHART_COLORS = {
     success: 'rgba(34, 197, 94, 1)',
     successBg: 'rgba(34, 197, 94, 0.15)',
     fabrics: [
-        'rgba(59, 130, 246, 0.9)',
-        'rgba(37, 99, 235, 0.88)',
-        'rgba(96, 165, 250, 0.86)',
-        'rgba(147, 197, 253, 0.82)',
-        'rgba(191, 219, 254, 0.9)',
+        'rgba(236, 72, 153, 0.85)',   // Pink
+        'rgba(139, 92, 246, 0.85)',   // Purple
+        'rgba(16, 185, 129, 0.85)',   // Emerald Green
+        'rgba(245, 158, 11, 0.85)',   // Amber
+        'rgba(59, 130, 246, 0.85)',   // Blue
+        'rgba(239, 68, 68, 0.85)',    // Red
     ],
 };
 
@@ -285,15 +290,30 @@ function initNotifications() {
     const overlay = document.getElementById('overlay');
     const markAll = document.getElementById('markAllRead');
 
+    // Check localStorage for notification state
+    const isNotificationsRead = localStorage.getItem('notificationsRead') === 'true';
+
+    if (isNotificationsRead) {
+        document.querySelectorAll('.notification-item.unread').forEach(el => el.classList.remove('unread'));
+        document.querySelectorAll('.notification-dot').forEach(el => {
+            el.style.display = 'none';
+        });
+    }
+
     if (btn && panel) {
         btn.addEventListener('click', () => {
             panel.classList.toggle('active');
-            overlay.classList.toggle('active');
+            if (overlay) overlay.classList.toggle('active');
         });
     }
     if (markAll) {
         markAll.addEventListener('click', () => {
+            localStorage.setItem('notificationsRead', 'true');
             document.querySelectorAll('.notification-item.unread').forEach(el => el.classList.remove('unread'));
+            // Hide the notification dot
+            document.querySelectorAll('.notification-dot').forEach(el => {
+                el.style.display = 'none';
+            });
         });
     }
 }

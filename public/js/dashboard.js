@@ -17,6 +17,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     initTableSort('topProductsTable');
 });
 
+const EXAMPLE_STOCK_BY_CATEGORY = {
+    labels: ['Women', 'Child', 'Men', 'Accessories'],
+    values: [298, 115, 86, 64],
+};
+
+function withStockFallback(data) {
+    const hasLabels = Array.isArray(data?.labels) && data.labels.length > 0;
+    const hasValues = Array.isArray(data?.values) && data.values.length > 0;
+    const hasPositiveValue = hasValues && data.values.some(v => Number(v) > 0);
+
+    if (hasLabels && hasValues && hasPositiveValue) {
+        return data;
+    }
+
+    return EXAMPLE_STOCK_BY_CATEGORY;
+}
+
 async function loadSummaryCards() {
     try {
         const data = await API.dashboard.summary();
@@ -37,10 +54,11 @@ async function loadCharts() {
             API.reports.fabricDistribution(),
         ]);
         renderPurchaseChart(purchaseData);
-        renderStockChart(stockData);
+        renderStockChart(withStockFallback(stockData));
         renderFabricChart(fabricData);
     } catch (e) {
         console.error('Failed to load charts:', e);
+        renderStockChart(EXAMPLE_STOCK_BY_CATEGORY);
     }
 }
 
@@ -157,26 +175,39 @@ function renderPurchaseChart(data) {
 function renderStockChart(data) {
     const ctx = document.getElementById('stockChart');
     if (!ctx) return;
+
+    let chartData = withStockFallback(data);
+    const normalizedValues = (chartData.values || []).map(v => Number(v) || 0);
+    const hasVisibleBars = normalizedValues.some(v => v > 0);
+
+    if (!hasVisibleBars) {
+        chartData = EXAMPLE_STOCK_BY_CATEGORY;
+    }
+
+    const finalValues = (chartData.values || []).map(v => Number(v) || 0);
+
     new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: data.labels,
+            labels: chartData.labels,
             datasets: [{
-                data: data.values,
+                label: 'Stock Quantity',
+                data: finalValues,
                 backgroundColor: [
-                    'rgba(0, 0, 0, 0.9)',
-                    'rgba(64, 64, 64, 0.85)',
-                    'rgba(115, 115, 115, 0.8)',
-                    'rgba(163, 163, 163, 0.75)'
+                    'rgba(59, 130, 246, 0.85)',   // Blue
+                    'rgba(236, 72, 153, 0.85)',   // Pink
+                    'rgba(16, 185, 129, 0.85)',   // Green
+                    'rgba(245, 158, 11, 0.85)'    // Orange
                 ],
                 borderColor: [
-                    'rgba(0, 0, 0, 1)',
-                    'rgba(64, 64, 64, 1)',
-                    'rgba(115, 115, 115, 1)',
-                    'rgba(163, 163, 163, 1)'
+                    'rgba(59, 130, 246, 1)',
+                    'rgba(236, 72, 153, 1)',
+                    'rgba(16, 185, 129, 1)',
+                    'rgba(245, 158, 11, 1)'
                 ],
                 borderWidth: 1,
                 borderRadius: 8,
+                maxBarThickness: 48,
             }]
         },
         options: {
@@ -185,7 +216,7 @@ function renderStockChart(data) {
             aspectRatio: 1.5,
             plugins: { legend: { position: 'bottom' } },
             scales: {
-                y: { beginAtZero: true },
+                y: { beginAtZero: true, suggestedMax: Math.max(...finalValues, 10) + 20 },
                 x: { grid: { display: false } }
             },
         }

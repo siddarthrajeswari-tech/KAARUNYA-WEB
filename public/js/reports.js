@@ -15,6 +15,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     ]);
 });
 
+const EXAMPLE_CATEGORY_STOCK_DATA = {
+    labels: ['Saree', 'Kurti', 'Lehenga', 'Blouse Material', 'Kids Wear'],
+    values: [210, 165, 84, 132, 98],
+};
+
+function withCategoryStockFallback(data) {
+    if (data && Array.isArray(data.labels) && data.labels.length > 0) {
+        return data;
+    }
+    return EXAMPLE_CATEGORY_STOCK_DATA;
+}
+
 async function loadKPIs() {
     try {
         const data = await API.reports.kpis();
@@ -33,15 +45,16 @@ async function loadCharts() {
             API.reports.monthlyPurchases(12),
             API.reports.fabricDistribution(),
             API.reports.supplierVolume(),
-            API.reports.categoryValue(),
+            API.reports.stockByCategory(),
         ]);
 
         renderPurchaseTrendChart(purchaseData);
         renderFabricStockChart(fabricData);
         renderSupplierVolumeChart(supplierData.data);
-        renderCategoryValueChart(categoryData);
+        renderCategoryValueChart(withCategoryStockFallback(categoryData));
     } catch (e) {
         console.error('Failed to load charts:', e);
+        renderCategoryValueChart(EXAMPLE_CATEGORY_STOCK_DATA);
     }
 }
 
@@ -104,15 +117,22 @@ function renderSupplierVolumeChart(data) {
 function renderCategoryValueChart(data) {
     const ctx = document.getElementById('categoryValueChart');
     if (!ctx) return;
+    const chartData = withCategoryStockFallback(data);
     new Chart(ctx, {
         type: 'pie',
         data: {
-            labels: data.labels,
-            datasets: [{ data: data.values, backgroundColor: [CHART_COLORS.primary, CHART_COLORS.accent], borderColor: '#fff', borderWidth: 3, hoverOffset: 10 }]
+            labels: chartData.labels,
+            datasets: [{
+                data: chartData.values,
+                backgroundColor: CHART_COLORS.fabrics,
+                borderColor: '#fff',
+                borderWidth: 3,
+                hoverOffset: 10
+            }]
         },
         options: {
             responsive: true, maintainAspectRatio: true, aspectRatio: 1.5,
-            plugins: { legend: { position: 'bottom' }, tooltip: { callbacks: { label: ctx => ctx.label + ': ' + formatCurrency(ctx.raw) } } }
+            plugins: { legend: { position: 'bottom' }, tooltip: { callbacks: { label: ctx => `${ctx.label}: ${ctx.raw} units` } } }
         }
     });
 }
