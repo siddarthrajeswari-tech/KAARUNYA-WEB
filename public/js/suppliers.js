@@ -37,20 +37,13 @@ function renderSupplierTable(data) {
     const countEl = document.getElementById('supplierCount');
     if (countEl) countEl.textContent = `${data.length} suppliers registered`;
 
-    tbody.innerHTML = data.map(s => {
-        const supplierProducts = allProducts.filter(p => p.supplier_id === s.id);
-        const productsHTML = supplierProducts.length > 0 
-            ? supplierProducts.map(p => `<span class="status-badge in-stock" style="margin:2px; font-size:0.75rem; font-weight:normal">${p.name}</span>`).join('')
-            : '<span style="color:var(--clr-gray-400); font-size:0.85rem">None</span>';
-
-        return `
+    tbody.innerHTML = data.map(s => `
         <tr>
             <td><strong>${s.id}</strong></td>
             <td class="product-name"><i class="fas fa-building"></i> ${s.name}</td>
             <td>${s.address || ''}</td>
             <td>${s.phone || ''}</td>
             <td><a href="mailto:${s.email}" style="color:var(--clr-primary-500)">${s.email || ''}</a></td>
-            <td><div style="display:flex; flex-wrap:wrap; max-width:200px;">${productsHTML}</div></td>
             <td><span class="status-badge ${s.status.toLowerCase()}">${s.status}</span></td>
             <td>
                 <div class="table-actions">
@@ -60,10 +53,7 @@ function renderSupplierTable(data) {
                 </div>
             </td>
         </tr>
-    `}).join('');
-}
-
-function initSupplierFilters() {
+    `).join('');
     const filterInput = document.getElementById('supplierFilter');
     const statusFilter = document.getElementById('statusFilter');
 

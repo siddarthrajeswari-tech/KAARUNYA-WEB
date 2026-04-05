@@ -180,7 +180,7 @@ function seed() {
     console.log(`   → ${orders.length} purchase orders`);
     console.log(`   → ${priceComps.length} price comparisons`);
     console.log(`   → ${monthlyData.length} months of purchase data`);
-    console.log(`   → 3 users (admin/admin123, manager/admin123, staff1/staff123)`);
+    console.log(`   → 3 users (admin/kaarumayil@10, manager/kaarumayil@10, staff1/staff123)`);
 }
 
 // Run directly

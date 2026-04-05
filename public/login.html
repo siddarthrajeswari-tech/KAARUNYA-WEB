@@ -161,6 +161,26 @@
     </div>
 
     <script>
+            const AUTH_API_BASE = window.API_BASE_URL || localStorage.getItem('API_BASE_URL') || '/api';
+
+            async function parseBodySafe(res) {
+                const text = await res.text();
+                if (!text) return {};
+                try {
+                    return JSON.parse(text);
+                } catch {
+                    return { raw: text };
+                }
+            }
+
+            function backendHint(res, body) {
+                if (body?.error) return body.error;
+                if (res.status === 404 && typeof body?.raw === 'string' && body.raw.includes('<!DOCTYPE html>')) {
+                    return 'Backend API not connected. Deploy backend and set API_BASE_URL.';
+                }
+                return 'Connection failed. Please try again.';
+            }
+
         // ---- Login Form ----
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -184,14 +204,14 @@
                     payload.totpCode = totpInput.value.trim();
                 }
 
-                const res = await fetch('/api/auth/login', {
+                    const res = await fetch(`${AUTH_API_BASE}/auth/login`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload),
                     credentials: 'include',
                 });
 
-                const data = await res.json();
+                    const data = await parseBodySafe(res);
 
                 if (data.requires2FA) {
                     // Show 2FA input
@@ -207,7 +227,7 @@
                 } else if (res.ok) {
                     window.location.href = '/index.html';
                 } else {
-                    errorText.textContent = data.error || 'Login failed';
+                        errorText.textContent = backendHint(res, data);
                     errorEl.classList.add('show');
                     errorEl.style.borderColor = '';
                     errorEl.style.background = '';
@@ -248,7 +268,7 @@
             successEl.style.display = 'none';
 
             try {
-                const res = await fetch('/api/auth/forgot-password', {
+                    const res = await fetch(`${AUTH_API_BASE}/auth/forgot-password`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -256,7 +276,7 @@
                     }),
                 });
 
-                const data = await res.json();
+                    const data = await parseBodySafe(res);
 
                 if (res.ok) {
                     if (data.token) {
@@ -269,7 +289,7 @@
                     document.getElementById('forgotSuccessText').textContent = data.message;
                     successEl.style.display = 'flex';
                 } else {
-                    document.getElementById('forgotErrorText').textContent = data.error;
+                        document.getElementById('forgotErrorText').textContent = backendHint(res, data);
                     errorEl.classList.add('show');
                 }
             } catch (err) {
@@ -290,7 +310,7 @@
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Resetting...';
 
             try {
-                const res = await fetch('/api/auth/reset-password', {
+                    const res = await fetch(`${AUTH_API_BASE}/auth/reset-password`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -299,7 +319,7 @@
                     }),
                 });
 
-                const data = await res.json();
+                    const data = await parseBodySafe(res);
 
                 if (res.ok) {
                     document.getElementById('forgotSuccessText').textContent = data.message;
@@ -311,7 +331,7 @@
                         document.getElementById('forgotView').style.display = 'none';
                     }, 2000);
                 } else {
-                    alert(data.error || 'Reset failed');
+                        alert(backendHint(res, data));
                 }
             } catch (err) {
                 alert('Connection failed.');
@@ -324,7 +344,7 @@
         // ---- Check if already logged in ----
         (async () => {
             try {
-                const res = await fetch('/api/auth/me', { credentials: 'include' });
+                const res = await fetch(`${AUTH_API_BASE}/auth/me`, { credentials: 'include' });
                 if (res.ok) window.location.href = '/index.html';
             } catch (e) { /* not logged in */ }
         })();

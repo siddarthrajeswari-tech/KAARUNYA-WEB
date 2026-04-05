@@ -3,18 +3,37 @@
 // Replaces in-memory DATA store with backend API calls
 // ============================================
 
-const API_BASE = '/api';
+const API_BASE = window.API_BASE_URL || localStorage.getItem('API_BASE_URL') || '/api';
+
+async function parseResponseBody(res) {
+    const text = await res.text();
+    if (!text) return {};
+    try {
+        return JSON.parse(text);
+    } catch {
+        return { raw: text };
+    }
+}
+
+function toApiErrorMessage(res, body) {
+    if (body?.error) return body.error;
+    if (res.status === 404 && typeof body?.raw === 'string' && body.raw.includes('<!DOCTYPE html>')) {
+        return 'Backend API is not connected. Deploy backend separately and set API_BASE_URL.';
+    }
+    return res.statusText || 'Request failed';
+}
 
 const API = {
     // ---- Generic HTTP helpers ----
     async get(endpoint) {
         const res = await fetch(`${API_BASE}${endpoint}`, { credentials: 'include' });
+        const body = await parseResponseBody(res);
         if (res.status === 401) {
             handleUnauthorized();
             throw new Error('Authentication required');
         }
-        if (!res.ok) throw new Error((await res.json()).error || res.statusText);
-        return res.json();
+        if (!res.ok) throw new Error(toApiErrorMessage(res, body));
+        return body;
     },
     async post(endpoint, body) {
         const res = await fetch(`${API_BASE}${endpoint}`, {
@@ -23,12 +42,13 @@ const API = {
             body: JSON.stringify(body),
             credentials: 'include',
         });
+        const responseBody = await parseResponseBody(res);
         if (res.status === 401 && !endpoint.includes('/auth/')) {
             handleUnauthorized();
             throw new Error('Authentication required');
         }
-        if (!res.ok) throw new Error((await res.json()).error || res.statusText);
-        return res.json();
+        if (!res.ok) throw new Error(toApiErrorMessage(res, responseBody));
+        return responseBody;
     },
     async put(endpoint, body) {
         const res = await fetch(`${API_BASE}${endpoint}`, {
@@ -37,24 +57,26 @@ const API = {
             body: JSON.stringify(body),
             credentials: 'include',
         });
+        const responseBody = await parseResponseBody(res);
         if (res.status === 401 && !endpoint.includes('/auth/')) {
             handleUnauthorized();
             throw new Error('Authentication required');
         }
-        if (!res.ok) throw new Error((await res.json()).error || res.statusText);
-        return res.json();
+        if (!res.ok) throw new Error(toApiErrorMessage(res, responseBody));
+        return responseBody;
     },
     async delete(endpoint) {
         const res = await fetch(`${API_BASE}${endpoint}`, {
             method: 'DELETE',
             credentials: 'include',
         });
+        const body = await parseResponseBody(res);
         if (res.status === 401) {
             handleUnauthorized();
             throw new Error('Authentication required');
         }
-        if (!res.ok) throw new Error((await res.json()).error || res.statusText);
-        return res.json();
+        if (!res.ok) throw new Error(toApiErrorMessage(res, body));
+        return body;
     },
 
     // ---- Auth ----
