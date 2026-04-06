@@ -6,14 +6,14 @@ const { getDb } = require('../db');
 const router = express.Router();
 
 // GET /api/dashboard/summary — dashboard summary data
-router.get('/summary', (req, res) => {
+router.get('/summary', async (req, res) => {
     try {
-        const db = getDb();
+        const db = await getDb();
 
-        const totalProducts = db.prepare('SELECT COUNT(*) as count FROM products').get().count;
-        const activeSuppliers = db.prepare("SELECT COUNT(*) as count FROM suppliers WHERE status = 'Active'").get().count;
-        const pendingOrders = db.prepare("SELECT COUNT(*) as count FROM purchase_orders WHERE status = 'Pending'").get().count;
-        const lowStockItems = db.prepare('SELECT COUNT(*) as count FROM products WHERE stock <= min_stock').get().count;
+        const [[{ count: totalProducts }]] = await db.query('SELECT COUNT(*) as count FROM products');
+        const [[{ count: activeSuppliers }]] = await db.query("SELECT COUNT(*) as count FROM suppliers WHERE status = 'Active'");
+        const [[{ count: pendingOrders }]] = await db.query("SELECT COUNT(*) as count FROM purchase_orders WHERE status = 'Pending'");
+        const [[{ count: lowStockItems }]] = await db.query('SELECT COUNT(*) as count FROM products WHERE stock <= min_stock');
 
         res.json({
             totalProducts,
@@ -27,16 +27,16 @@ router.get('/summary', (req, res) => {
 });
 
 // GET /api/dashboard/activity — recent activity
-router.get('/activity', (req, res) => {
+router.get('/activity', async (req, res) => {
     try {
-        const db = getDb();
+        const db = await getDb();
         const limit = parseInt(req.query.limit) || 10;
 
-        const activities = db.prepare(`
+        const activities = (await db.query(`
             SELECT * FROM activity_log
             ORDER BY created_at DESC
             LIMIT ?
-        `).all(limit);
+        `, [limit]))[0];
 
         res.json({ data: activities });
     } catch (err) {
@@ -45,10 +45,10 @@ router.get('/activity', (req, res) => {
 });
 
 // GET /api/dashboard/top-products — top products by stock value
-router.get('/top-products', (req, res) => {
+router.get('/top-products', async (req, res) => {
     try {
-        const db = getDb();
-        const products = db.prepare(`
+        const db = await getDb();
+        const [products] = await db.query(`
             SELECT p.*, s.name as supplier_name,
                    CASE
                        WHEN p.stock <= 0 THEN 'Out of Stock'
@@ -59,7 +59,7 @@ router.get('/top-products', (req, res) => {
             LEFT JOIN suppliers s ON p.supplier_id = s.id
             ORDER BY (p.stock * p.price) DESC
             LIMIT 10
-        `).all();
+        `);
 
         res.json({ data: products });
     } catch (err) {
@@ -68,10 +68,10 @@ router.get('/top-products', (req, res) => {
 });
 
 // GET /api/dashboard/settings — get shop settings
-router.get('/settings', (req, res) => {
+router.get('/settings', async (req, res) => {
     try {
-        const db = getDb();
-        const settings = db.prepare('SELECT * FROM settings').all();
+        const db = await getDb();
+        const settings = (await db.query('SELECT * FROM settings'))[0];
         const data = {};
         for (const row of settings) {
              try {
@@ -87,21 +87,28 @@ router.get('/settings', (req, res) => {
 });
 
 // POST /api/dashboard/settings — save shop settings
-router.post('/settings', (req, res) => {
+router.post('/settings', async (req, res) => {
     try {
-        const db = getDb();
+        const db = await getDb();
+        const conn = await db.getConnection();
         const payload = req.body;
-        const stmt = db.prepare(`
-            INSERT INTO settings (key, value, updated_at) 
-            VALUES (?, ?, CURRENT_TIMESTAMP)
-            ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
-        `);
         
-        db.transaction(() => {
+        try {
+            await conn.beginTransaction();
             for (const [key, value] of Object.entries(payload)) {
-                stmt.run(key, typeof value === 'object' ? JSON.stringify(value) : value);
+                await conn.execute(`
+                    INSERT INTO settings (\`key\`, value, updated_at) 
+                    VALUES (?, ?, CURRENT_TIMESTAMP)
+                    ON DUPLICATE KEY UPDATE value = VALUES(value), updated_at = CURRENT_TIMESTAMP
+                `, [key, typeof value === 'object' ? JSON.stringify(value) : value]);
             }
-        })();
+            await conn.commit();
+        } catch (err) {
+            await conn.rollback();
+            throw err;
+        } finally {
+            conn.release();
+        }
 
         res.json({ message: 'Settings saved successfully' });
     } catch (err) {
@@ -110,9 +117,9 @@ router.post('/settings', (req, res) => {
 });
 
 // GET /api/dashboard/export — export database as JSON
-router.get('/export', (req, res) => {
+router.get('/export', async (req, res) => {
     try {
-        const db = getDb();
+        const db = await getDb();
         const exportData = {};
         
         const tables = [
@@ -122,7 +129,7 @@ router.get('/export', (req, res) => {
         ];
 
         for (const table of tables) {
-            exportData[table] = db.prepare(`SELECT * FROM ${table}`).all();
+            exportData[table] = (await db.query(`SELECT * FROM ${table}`))[0];
         }
 
         res.json(exportData);
@@ -132,26 +139,33 @@ router.get('/export', (req, res) => {
 });
 
 // POST /api/dashboard/reset — wipe non-user data
-router.post('/reset', (req, res) => {
+router.post('/reset', async (req, res) => {
     try {
         if (req.session?.user?.role !== 'admin' && req.session?.user?.role !== 'manager') {
             return res.status(403).json({ error: 'Permission denied. Admin/Manager role required.' });
         }
 
-        const db = getDb();
-        
-        db.transaction(() => {
-            db.prepare('DELETE FROM purchase_order_items').run();
-            db.prepare('DELETE FROM purchase_orders').run();
-            db.prepare('DELETE FROM products').run();
-            db.prepare('DELETE FROM suppliers').run();
-            db.prepare('DELETE FROM price_comparisons').run();
-            db.prepare('DELETE FROM monthly_purchases').run();
-            db.prepare('DELETE FROM activity_log').run();
-            
-            // Optionally, reset sqlite sequences
-            db.prepare("DELETE FROM sqlite_sequence WHERE name IN ('purchase_order_items', 'price_comparisons', 'monthly_purchases', 'activity_log')").run();
-        })();
+        const db = await getDb();
+        const conn = await db.getConnection();
+
+        await conn.beginTransaction();
+        try {
+            await conn.execute('SET FOREIGN_KEY_CHECKS=0');
+            await conn.execute('TRUNCATE TABLE purchase_order_items');
+            await conn.execute('TRUNCATE TABLE purchase_orders');
+            await conn.execute('TRUNCATE TABLE products');
+            await conn.execute('TRUNCATE TABLE suppliers');
+            await conn.execute('TRUNCATE TABLE price_comparisons');
+            await conn.execute('TRUNCATE TABLE monthly_purchases');
+            await conn.execute('TRUNCATE TABLE activity_log');
+            await conn.execute('SET FOREIGN_KEY_CHECKS=1');
+            await conn.commit();
+        } catch(e) {
+            await conn.rollback();
+            throw e;
+        } finally {
+            conn.release();
+        }
 
         res.json({ message: 'Database reset successfully' });
     } catch (err) {

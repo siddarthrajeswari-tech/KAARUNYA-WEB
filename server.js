@@ -76,14 +76,32 @@ app.use((err, req, res, next) => {
 });
 
 // ---- Initialize DB & Start Server ----
-initDatabase();
+async function startServer() {
+    try {
+        const db = await initDatabase();
 
-app.listen(PORT, () => {
-    console.log(`
-    ╔══════════════════════════════════════════╗
-    ║   💎 Kaarunya Dress Shop Server         ║
-    ║   Running on http://localhost:${PORT}      ║
-    ║   Environment: ${process.env.NODE_ENV || 'development'}          ║
-    ╚══════════════════════════════════════════╝
-    `);
-});
+        // Auto-seed database if it is completely empty on deployment
+        const [rows] = await db.query('SELECT COUNT(*) as count FROM users');
+        const userCount = rows[0];
+        if (userCount.count === 0) {
+            console.log('📦 Empty database detected. Running initial seed...');
+            const { seed } = require('./server/seed');
+            await seed();
+        }
+
+        app.listen(PORT, () => {
+            console.log(`
+            ╔══════════════════════════════════════════╗
+            ║   💎 Kaarunya Dress Shop Server         ║
+            ║   Running on http://localhost:${PORT}      ║
+            ║   Environment: ${process.env.NODE_ENV || 'development'}          ║
+            ╚══════════════════════════════════════════╝
+            `);
+        });
+    } catch (err) {
+        console.error('Failed to start server:', err);
+        process.exit(1);
+    }
+}
+
+startServer();

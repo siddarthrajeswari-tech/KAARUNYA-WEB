@@ -8,32 +8,36 @@ const { getDb } = require('../db');
 const router = express.Router();
 
 // ---- Helper: Log activity ----
-function logActivity(db, action, entityType, entityId, description, userId) {
-    db.prepare(`
-        INSERT INTO activity_log (action, entity_type, entity_id, description, user_id)
-        VALUES (?, ?, ?, ?, ?)
-    `).run(action, entityType, entityId, description, userId || null);
+async function logActivity(db, action, entityType, entityId, description, userId) {
+    try {
+        await db.execute(`
+            INSERT INTO activity_log (action, entity_type, entity_id, description, user_id)
+            VALUES (?, ?, ?, ?, ?)
+        `, [action, entityType, entityId, description, userId || null]);
+    } catch (err) {
+        console.error('Error logging activity', err);
+    }
 }
 
 // ================================================
 // POST /api/auth/login
 // ================================================
-router.post('/login', (req, res) => {
+router.post('/login', async (req, res) => {
     try {
         const { username, password, totpCode } = req.body;
         if (!username || !password) {
             return res.status(400).json({ error: 'Username and password are required.' });
         }
 
-        const db = getDb();
-        const user = db.prepare('SELECT * FROM users WHERE username = ? AND is_active = 1').get(username);
+        const db = await getDb();
+        const user = (await db.query('SELECT * FROM users WHERE username = ? AND is_active = 1', [username]))[0][0];
 
         if (!user || !bcrypt.compareSync(password, user.password)) {
             return res.status(401).json({ error: 'Invalid username or password.' });
         }
 
         // Check if 2FA is enabled
-        const tfa = db.prepare('SELECT * FROM two_factor_auth WHERE user_id = ? AND is_enabled = 1').get(user.id);
+        const tfa = (await db.query('SELECT * FROM two_factor_auth WHERE user_id = ? AND is_enabled = 1', [user.id]))[0][0];
         if (tfa) {
             if (!totpCode) {
                 return res.status(200).json({
@@ -77,13 +81,13 @@ router.post('/login', (req, res) => {
 // ================================================
 // POST /api/auth/logout
 // ================================================
-router.post('/logout', (req, res) => {
+router.post('/logout', async (req, res) => {
     const userId = req.session?.user?.id;
     const username = req.session?.user?.username;
 
     if (userId) {
         try {
-            const db = getDb();
+            const db = await getDb();
             logActivity(db, 'logout', 'user', String(userId), `User ${username} logged out`, userId);
         } catch (e) { /* ignore logging errors */ }
     }
@@ -98,10 +102,10 @@ router.post('/logout', (req, res) => {
 // ================================================
 // GET /api/auth/me — check current session
 // ================================================
-router.get('/me', (req, res) => {
+router.get('/me', async (req, res) => {
     if (req.session && req.session.user) {
-        const db = getDb();
-        const tfa = db.prepare('SELECT is_enabled FROM two_factor_auth WHERE user_id = ?').get(req.session.user.id);
+        const db = await getDb();
+        const tfa = (await db.query('SELECT is_enabled FROM two_factor_auth WHERE user_id = ?', [req.session.user.id]))[0][0];
         return res.json({
             user: {
                 ...req.session.user,
@@ -115,7 +119,7 @@ router.get('/me', (req, res) => {
 // ================================================
 // POST /api/auth/register (admin only)
 // ================================================
-router.post('/register', (req, res) => {
+router.post('/register', async (req, res) => {
     try {
         if (!req.session?.user || req.session.user.role !== 'admin') {
             return res.status(403).json({ error: 'Only admins can register new users.' });
@@ -142,25 +146,25 @@ router.post('/register', (req, res) => {
             return res.status(400).json({ error: 'Invalid role. Must be admin, manager, or staff.' });
         }
 
-        const db = getDb();
-        const existing = db.prepare('SELECT id FROM users WHERE username = ?').get(username);
+        const db = await getDb();
+        const existing = (await db.query('SELECT id FROM users WHERE username = ?', [username]))[0][0];
         if (existing) {
             return res.status(409).json({ error: 'Username already exists.' });
         }
 
         const hashedPassword = bcrypt.hashSync(password, 10);
-        const result = db.prepare(`
+        const [result] = await db.execute(`
             INSERT INTO users (username, password, full_name, role, email) VALUES (?, ?, ?, ?, ?)
-        `).run(username, hashedPassword, fullName, role || 'staff', email || null);
+        `, [username, hashedPassword, fullName, role || 'staff', email || null]);
 
         // Log activity
-        logActivity(db, 'user_created', 'user', String(result.lastInsertRowid),
+        await logActivity(db, 'user_created', 'user', String(result.insertId),
             `New user "${username}" created with role "${role || 'staff'}" by ${req.session.user.username}`,
             req.session.user.id);
 
         res.status(201).json({
             message: 'User registered successfully.',
-            userId: result.lastInsertRowid,
+            userId: result.insertId,
         });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -170,7 +174,7 @@ router.post('/register', (req, res) => {
 // ================================================
 // PUT /api/auth/profile — update own profile
 // ================================================
-router.put('/profile', (req, res) => {
+router.put('/profile', async (req, res) => {
     try {
         if (!req.session?.user) {
             return res.status(401).json({ error: 'Authentication required.' });
@@ -185,9 +189,9 @@ router.put('/profile', (req, res) => {
             return res.status(400).json({ error: 'Invalid email format.' });
         }
 
-        const db = getDb();
-        db.prepare('UPDATE users SET full_name = ?, email = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
-            .run(fullName, email || null, req.session.user.id);
+        const db = await getDb();
+        await db.execute('UPDATE users SET full_name = ?, email = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+            [fullName, email || null, req.session.user.id]);
 
         // Update session
         req.session.user.fullName = fullName;
@@ -205,7 +209,7 @@ router.put('/profile', (req, res) => {
 // ================================================
 // PUT /api/auth/change-password
 // ================================================
-router.put('/change-password', (req, res) => {
+router.put('/change-password', async (req, res) => {
     try {
         if (!req.session?.user) {
             return res.status(401).json({ error: 'Authentication required.' });
@@ -220,8 +224,8 @@ router.put('/change-password', (req, res) => {
             return res.status(400).json({ error: 'New password must be at least 6 characters.' });
         }
 
-        const db = getDb();
-        const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.session.user.id);
+        const db = await getDb();
+        const user = (await db.query('SELECT * FROM users WHERE id = ?', [req.session.user.id]))[0][0];
         
         if (!user) {
              return res.status(404).json({ error: 'User not found.' });
@@ -232,7 +236,7 @@ router.put('/change-password', (req, res) => {
         }
 
         const hashed = bcrypt.hashSync(newPassword, 10);
-        db.prepare('UPDATE users SET password = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(hashed, user.id);
+        (await db.execute('UPDATE users SET password = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [hashed, user.id]));
         
         // Return 200 explicitly so client knows it was successful
         return res.status(200).json({ message: 'Password changed successfully.' });
@@ -244,19 +248,19 @@ router.put('/change-password', (req, res) => {
 // ================================================
 // POST /api/auth/forgot-password — generate reset token
 // ================================================
-router.post('/forgot-password', (req, res) => {
+router.post('/forgot-password', async (req, res) => {
     try {
         const { username, email } = req.body;
         if (!username && !email) {
             return res.status(400).json({ error: 'Username or email is required.' });
         }
 
-        const db = getDb();
+        const db = await getDb();
         let user;
         if (username) {
-            user = db.prepare('SELECT * FROM users WHERE username = ? AND is_active = 1').get(username);
+            user = (await db.query('SELECT * FROM users WHERE username = ? AND is_active = 1', [username]))[0][0];
         } else {
-            user = db.prepare('SELECT * FROM users WHERE email = ? AND is_active = 1').get(email);
+            user = (await db.query('SELECT * FROM users WHERE email = ? AND is_active = 1', [email]))[0][0];
         }
 
         if (!user) {
@@ -265,15 +269,15 @@ router.post('/forgot-password', (req, res) => {
         }
 
         // Invalidate old tokens
-        db.prepare('UPDATE password_reset_tokens SET used = 1 WHERE user_id = ? AND used = 0').run(user.id);
+        (await db.execute('UPDATE password_reset_tokens SET used = 1 WHERE user_id = ? AND used = 0', [user.id]));
 
         // Generate token
         const token = crypto.randomBytes(32).toString('hex');
-        const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour
+        const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
-        db.prepare(`
+        await db.execute(`
             INSERT INTO password_reset_tokens (user_id, token, expires_at) VALUES (?, ?, ?)
-        `).run(user.id, token, expiresAt);
+        `, [user.id, token, expiresAt]);
 
         logActivity(db, 'password_reset_requested', 'user', String(user.id),
             `Password reset requested for user ${user.username}`, null);
@@ -293,7 +297,7 @@ router.post('/forgot-password', (req, res) => {
 // ================================================
 // POST /api/auth/reset-password — reset with token
 // ================================================
-router.post('/reset-password', (req, res) => {
+router.post('/reset-password', async (req, res) => {
     try {
         const { token, newPassword } = req.body;
         if (!token || !newPassword) {
@@ -304,20 +308,21 @@ router.post('/reset-password', (req, res) => {
             return res.status(400).json({ error: 'Password must be at least 6 characters.' });
         }
 
-        const db = getDb();
-        const resetToken = db.prepare(`
+        const db = await getDb();
+        const [rows] = await db.execute(`
             SELECT * FROM password_reset_tokens 
-            WHERE token = ? AND used = 0 AND expires_at > datetime('now')
-        `).get(token);
+            WHERE token = ? AND used = 0 AND expires_at > NOW()
+        `, [token]);
+        const resetToken = rows[0];
 
         if (!resetToken) {
             return res.status(400).json({ error: 'Invalid or expired reset token.' });
         }
 
         const hashed = bcrypt.hashSync(newPassword, 10);
-        db.prepare('UPDATE users SET password = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
-            .run(hashed, resetToken.user_id);
-        db.prepare('UPDATE password_reset_tokens SET used = 1 WHERE id = ?').run(resetToken.id);
+        await db.execute('UPDATE users SET password = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+            [hashed, resetToken.user_id]);
+        (await db.execute('UPDATE password_reset_tokens SET used = 1 WHERE id = ?', [resetToken.id]));
 
         logActivity(db, 'password_reset', 'user', String(resetToken.user_id),
             `Password reset for user ID ${resetToken.user_id}`, null);
@@ -340,19 +345,19 @@ router.post('/2fa/setup', async (req, res) => {
         const { authenticator } = require('otplib');
         const QRCode = require('qrcode');
 
-        const db = getDb();
-        const existing = db.prepare('SELECT * FROM two_factor_auth WHERE user_id = ?').get(req.session.user.id);
+        const db = await getDb();
+        const existing = (await db.query('SELECT * FROM two_factor_auth WHERE user_id = ?', [req.session.user.id]))[0][0];
 
         const secret = authenticator.generateSecret();
         const otpauth = authenticator.keyuri(req.session.user.username, 'Kaarunya', secret);
         const qrCode = await QRCode.toDataURL(otpauth);
 
         if (existing) {
-            db.prepare('UPDATE two_factor_auth SET secret = ?, is_enabled = 0 WHERE user_id = ?')
-                .run(secret, req.session.user.id);
+            await db.execute('UPDATE two_factor_auth SET secret = ?, is_enabled = 0 WHERE user_id = ?',
+                [secret, req.session.user.id]);
         } else {
-            db.prepare('INSERT INTO two_factor_auth (user_id, secret) VALUES (?, ?)')
-                .run(req.session.user.id, secret);
+            await db.execute('INSERT INTO two_factor_auth (user_id, secret) VALUES (?, ?)',
+                [req.session.user.id, secret]);
         }
 
         res.json({
@@ -368,7 +373,7 @@ router.post('/2fa/setup', async (req, res) => {
 // ================================================
 // 2FA — Verify & Enable
 // ================================================
-router.post('/2fa/verify', (req, res) => {
+router.post('/2fa/verify', async (req, res) => {
     try {
         if (!req.session?.user) {
             return res.status(401).json({ error: 'Authentication required.' });
@@ -380,8 +385,8 @@ router.post('/2fa/verify', (req, res) => {
         }
 
         const { authenticator } = require('otplib');
-        const db = getDb();
-        const tfa = db.prepare('SELECT * FROM two_factor_auth WHERE user_id = ?').get(req.session.user.id);
+        const db = await getDb();
+        const tfa = (await db.query('SELECT * FROM two_factor_auth WHERE user_id = ?', [req.session.user.id]))[0][0];
 
         if (!tfa) {
             return res.status(400).json({ error: 'Please set up 2FA first.' });
@@ -392,7 +397,7 @@ router.post('/2fa/verify', (req, res) => {
             return res.status(401).json({ error: 'Invalid verification code. Please try again.' });
         }
 
-        db.prepare('UPDATE two_factor_auth SET is_enabled = 1 WHERE user_id = ?').run(req.session.user.id);
+        (await db.execute('UPDATE two_factor_auth SET is_enabled = 1 WHERE user_id = ?', [req.session.user.id]));
 
         logActivity(db, '2fa_enabled', 'user', String(req.session.user.id),
             `User ${req.session.user.username} enabled two-factor authentication`, req.session.user.id);
@@ -406,7 +411,7 @@ router.post('/2fa/verify', (req, res) => {
 // ================================================
 // 2FA — Disable
 // ================================================
-router.post('/2fa/disable', (req, res) => {
+router.post('/2fa/disable', async (req, res) => {
     try {
         if (!req.session?.user) {
             return res.status(401).json({ error: 'Authentication required.' });
@@ -417,13 +422,13 @@ router.post('/2fa/disable', (req, res) => {
             return res.status(400).json({ error: 'Password is required to disable 2FA.' });
         }
 
-        const db = getDb();
-        const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.session.user.id);
+        const db = await getDb();
+        const user = (await db.query('SELECT * FROM users WHERE id = ?', [req.session.user.id]))[0][0];
         if (!bcrypt.compareSync(password, user.password)) {
             return res.status(401).json({ error: 'Incorrect password.' });
         }
 
-        db.prepare('DELETE FROM two_factor_auth WHERE user_id = ?').run(req.session.user.id);
+        (await db.execute('DELETE FROM two_factor_auth WHERE user_id = ?', [req.session.user.id]));
 
         logActivity(db, '2fa_disabled', 'user', String(req.session.user.id),
             `User ${req.session.user.username} disabled two-factor authentication`, req.session.user.id);
@@ -437,21 +442,21 @@ router.post('/2fa/disable', (req, res) => {
 // ================================================
 // GET /api/auth/users — list all users (admin/manager)
 // ================================================
-router.get('/users', (req, res) => {
+router.get('/users', async (req, res) => {
     try {
         if (!req.session?.user || !['admin', 'manager'].includes(req.session.user.role)) {
             return res.status(403).json({ error: 'Insufficient permissions.' });
         }
 
-        const db = getDb();
-        const users = db.prepare(`
+        const db = await getDb();
+        const users = (await db.query(`
             SELECT u.id, u.username, u.full_name, u.role, u.email, u.is_active, 
                    u.created_at, u.updated_at,
                    CASE WHEN t.is_enabled = 1 THEN 1 ELSE 0 END as has_2fa
             FROM users u
             LEFT JOIN two_factor_auth t ON u.id = t.user_id
             ORDER BY u.created_at DESC
-        `).all();
+        `))[0];
 
         res.json({ data: users, total: users.length });
     } catch (err) {
@@ -462,21 +467,21 @@ router.get('/users', (req, res) => {
 // ================================================
 // GET /api/auth/users/:id — get single user (admin)
 // ================================================
-router.get('/users/:id', (req, res) => {
+router.get('/users/:id', async (req, res) => {
     try {
         if (!req.session?.user || req.session.user.role !== 'admin') {
             return res.status(403).json({ error: 'Insufficient permissions.' });
         }
 
-        const db = getDb();
-        const user = db.prepare(`
+        const db = await getDb();
+        const user = (await db.query(`
             SELECT u.id, u.username, u.full_name, u.role, u.email, u.is_active,
                    u.created_at, u.updated_at,
                    CASE WHEN t.is_enabled = 1 THEN 1 ELSE 0 END as has_2fa
             FROM users u
             LEFT JOIN two_factor_auth t ON u.id = t.user_id
             WHERE u.id = ?
-        `).get(req.params.id);
+        `, [req.params.id]))[0][0];
 
         if (!user) return res.status(404).json({ error: 'User not found.' });
         res.json({ data: user });
@@ -488,14 +493,14 @@ router.get('/users/:id', (req, res) => {
 // ================================================
 // PUT /api/auth/users/:id — update user (admin)
 // ================================================
-router.put('/users/:id', (req, res) => {
+router.put('/users/:id', async (req, res) => {
     try {
         if (!req.session?.user || req.session.user.role !== 'admin') {
             return res.status(403).json({ error: 'Only admins can update users.' });
         }
 
-        const db = getDb();
-        const existing = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
+        const db = await getDb();
+        const existing = (await db.query('SELECT * FROM users WHERE id = ?', [req.params.id]))[0][0];
         if (!existing) return res.status(404).json({ error: 'User not found.' });
 
         const { fullName, role, email, isActive, password } = req.body;
@@ -507,7 +512,7 @@ router.put('/users/:id', (req, res) => {
         }
 
         // Update fields
-        db.prepare(`
+        await db.execute(`
             UPDATE users SET 
                 full_name = COALESCE(?, full_name),
                 role = COALESCE(?, role),
@@ -515,22 +520,22 @@ router.put('/users/:id', (req, res) => {
                 is_active = COALESCE(?, is_active),
                 updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
-        `).run(fullName, role, email, isActive !== undefined ? (isActive ? 1 : 0) : null, req.params.id);
+        `, [fullName, role, email, isActive !== undefined ? (isActive ? 1 : 0) : null, req.params.id]);
 
         // Update password if provided
         if (password && password.length >= 6) {
             const hashed = bcrypt.hashSync(password, 10);
-            db.prepare('UPDATE users SET password = ? WHERE id = ?').run(hashed, req.params.id);
+            (await db.execute('UPDATE users SET password = ? WHERE id = ?', [hashed, req.params.id]));
         }
 
         logActivity(db, 'user_updated', 'user', String(req.params.id),
             `User "${existing.username}" updated by ${req.session.user.username}`,
             req.session.user.id);
 
-        const updated = db.prepare(`
+        const updated = (await db.query(`
             SELECT id, username, full_name, role, email, is_active, created_at, updated_at
             FROM users WHERE id = ?
-        `).get(req.params.id);
+        `, [req.params.id]))[0][0];
 
         res.json({ message: 'User updated.', data: updated });
     } catch (err) {
@@ -541,7 +546,7 @@ router.put('/users/:id', (req, res) => {
 // ================================================
 // DELETE /api/auth/users/:id — deactivate user (admin)
 // ================================================
-router.delete('/users/:id', (req, res) => {
+router.delete('/users/:id', async (req, res) => {
     try {
         if (!req.session?.user || req.session.user.role !== 'admin') {
             return res.status(403).json({ error: 'Only admins can delete users.' });
@@ -552,12 +557,12 @@ router.delete('/users/:id', (req, res) => {
             return res.status(400).json({ error: 'You cannot delete your own account.' });
         }
 
-        const db = getDb();
-        const existing = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
+        const db = await getDb();
+        const existing = (await db.query('SELECT * FROM users WHERE id = ?', [req.params.id]))[0][0];
         if (!existing) return res.status(404).json({ error: 'User not found.' });
 
         // Soft-delete: deactivate
-        db.prepare('UPDATE users SET is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(req.params.id);
+        (await db.execute('UPDATE users SET is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [req.params.id]));
 
         logActivity(db, 'user_deactivated', 'user', String(req.params.id),
             `User "${existing.username}" deactivated by ${req.session.user.username}`,
@@ -572,13 +577,13 @@ router.delete('/users/:id', (req, res) => {
 // ================================================
 // GET /api/auth/activity-log — get activity log (admin/manager)
 // ================================================
-router.get('/activity-log', (req, res) => {
+router.get('/activity-log', async (req, res) => {
     try {
         if (!req.session?.user || !['admin', 'manager'].includes(req.session.user.role)) {
             return res.status(403).json({ error: 'Insufficient permissions.' });
         }
 
-        const db = getDb();
+        const db = await getDb();
         const { action, entityType, limit, offset } = req.query;
         const pageLimit = Math.min(parseInt(limit) || 50, 200);
         const pageOffset = parseInt(offset) || 0;
@@ -601,12 +606,12 @@ router.get('/activity-log', (req, res) => {
         }
 
         const countSql = sql.replace('SELECT a.*, u.username as user_name, u.full_name as user_full_name', 'SELECT COUNT(*) as count');
-        const total = db.prepare(countSql).get(...params).count;
+        const total = (await db.query(countSql, [...params]))[0][0].count;
 
         sql += ' ORDER BY a.created_at DESC LIMIT ? OFFSET ?';
         params.push(pageLimit, pageOffset);
 
-        const logs = db.prepare(sql).all(...params);
+        const logs = (await db.query(sql, [...params]))[0];
 
         res.json({ data: logs, total, limit: pageLimit, offset: pageOffset });
     } catch (err) {

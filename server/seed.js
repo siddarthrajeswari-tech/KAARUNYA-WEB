@@ -1,42 +1,38 @@
 // ============================================
-// KAARUNYA — Database Seeder
+// KAARUNYA — Database Seeder (MySQL)
 // ============================================
 require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
 const bcrypt = require('bcryptjs');
 const { getDb, initDatabase } = require('./db');
 
-function seed() {
-    const db = initDatabase();
+async function seed() {
+    const db = await initDatabase();
 
     console.log('🌱 Seeding database...');
 
     // ---- Clear existing data ----
-    db.exec(`
-        DELETE FROM activity_log;
-        DELETE FROM purchase_order_items;
-        DELETE FROM purchase_orders;
-        DELETE FROM price_comparisons;
-        DELETE FROM monthly_purchases;
-        DELETE FROM products;
-        DELETE FROM suppliers;
-        DELETE FROM users;
-    `);
+    // Needs SET FOREIGN_KEY_CHECKS=0 to allow truncation
+    await db.query('SET FOREIGN_KEY_CHECKS=0;');
+    const tables = [
+        'activity_log', 'purchase_order_items', 'purchase_orders',
+        'price_comparisons', 'monthly_purchases', 'products', 'suppliers', 'users'
+    ];
+    for (const table of tables) {
+        await db.query(`TRUNCATE TABLE ${table};`);
+    }
+    await db.query('SET FOREIGN_KEY_CHECKS=1;');
 
     // ---- Seed Users ----
     const hashedPassword = bcrypt.hashSync('kaarumayil@10', 10);
     const staffPassword = bcrypt.hashSync('staff123', 10);
 
-    const insertUser = db.prepare(`
-        INSERT INTO users (username, password, full_name, role, email) VALUES (?, ?, ?, ?, ?)
-    `);
-    insertUser.run('admin', hashedPassword, 'Admin User', 'admin', 'admin@kaarunya.in');
-    insertUser.run('manager', hashedPassword, 'Store Manager', 'manager', 'manager@kaarunya.in');
-    insertUser.run('staff1', staffPassword, 'Priya Sharma', 'staff', 'sid@kaarunya.in');
+    const insertUserQuery = `INSERT INTO users (username, password, full_name, role, email) VALUES (?, ?, ?, ?, ?)`;
+    await db.execute(insertUserQuery, ['admin', hashedPassword, 'Admin User', 'admin', 'admin@kaarunya.in']);
+    await db.execute(insertUserQuery, ['manager', hashedPassword, 'Store Manager', 'manager', 'manager@kaarunya.in']);
+    await db.execute(insertUserQuery, ['staff1', staffPassword, 'Priya Sharma', 'staff', 'sid@kaarunya.in']);
 
     // ---- Seed Suppliers ----
-    const insertSupplier = db.prepare(`
-        INSERT INTO suppliers (id, name, address, phone, email, status) VALUES (?, ?, ?, ?, ?, ?)
-    `);
+    const insertSupplierQuery = `INSERT INTO suppliers (id, name, address, phone, email, status) VALUES (?, ?, ?, ?, ?, ?)`;
     const suppliers = [
         ['SUP-001', 'Silk Route Fabrics', '12 Anna Nagar, Chennai', '+91 98765 43210', 'info@silkroute.in', 'Active'],
         ['SUP-002', 'Linen World', '45 MG Road, Bangalore', '+91 98765 43211', 'orders@linenworld.co', 'Active'],
@@ -49,15 +45,19 @@ function seed() {
         ['SUP-009', 'Southern Silks', '55 Temple St, Kanchipuram', '+91 98765 43218', 'orders@southernsilks.in', 'Active'],
         ['SUP-010', 'Modern Fabrics Co', '22 New Town, Kolkata', '+91 98765 43219', 'hello@modernfab.co', 'Inactive'],
     ];
-    const insertSupplierMany = db.transaction((items) => {
-        for (const s of items) insertSupplier.run(...s);
-    });
-    insertSupplierMany(suppliers);
+
+    const conn = await db.getConnection();
+    try {
+        await conn.beginTransaction();
+        for (const s of suppliers) await conn.execute(insertSupplierQuery, s);
+        await conn.commit();
+    } catch (err) {
+        await conn.rollback();
+        throw err;
+    }
 
     // ---- Seed Products ----
-    const insertProduct = db.prepare(`
-        INSERT INTO products (id, name, category, fabric, stock, min_stock, price, supplier_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `);
+    const insertProductQuery = `INSERT INTO products (id, name, category, fabric, stock, min_stock, price, supplier_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
     const products = [
         ['PRD-001', 'Silk Saree - Royal Blue', 'Women', 'Silk', 45, 10, 2500, 'SUP-001'],
         ['PRD-002', 'Cotton Kurti - Floral', 'Women', 'Cotton', 28, 15, 850, 'SUP-003'],
@@ -78,18 +78,19 @@ function seed() {
         ['PRD-017', 'Denim Skirt - Women', 'Women', 'Denim', 22, 10, 750, 'SUP-004'],
         ['PRD-018', 'Rayon Sharara Set', 'Women', 'Rayon', 15, 10, 1600, 'SUP-005'],
     ];
-    const insertProductMany = db.transaction((items) => {
-        for (const p of items) insertProduct.run(...p);
-    });
-    insertProductMany(products);
+
+    try {
+        await conn.beginTransaction();
+        for (const p of products) await conn.execute(insertProductQuery, p);
+        await conn.commit();
+    } catch(err) {
+        await conn.rollback();
+        throw err;
+    }
 
     // ---- Seed Purchase Orders ----
-    const insertOrder = db.prepare(`
-        INSERT INTO purchase_orders (id, supplier_id, order_date, status, total) VALUES (?, ?, ?, ?, ?)
-    `);
-    const insertOrderItem = db.prepare(`
-        INSERT INTO purchase_order_items (order_id, product_id, quantity, unit_price) VALUES (?, ?, ?, ?)
-    `);
+    const insertOrderQuery = `INSERT INTO purchase_orders (id, supplier_id, order_date, status, total) VALUES (?, ?, ?, ?, ?)`;
+    const insertOrderItemQuery = `INSERT INTO purchase_order_items (order_id, product_id, quantity, unit_price) VALUES (?, ?, ?, ?)`;
 
     const orders = [
         { id: 'PO-2026-038', supplier: 'SUP-001', date: '2026-01-15', status: 'Delivered', items: [{ product: 'PRD-001', qty: 20, price: 1800 }, { product: 'PRD-011', qty: 15, price: 1100 }] },
@@ -103,21 +104,23 @@ function seed() {
         { id: 'PO-2026-046', supplier: 'SUP-004', date: '2026-03-03', status: 'Pending', items: [{ product: 'PRD-010', qty: 20, price: 620 }, { product: 'PRD-017', qty: 15, price: 480 }] },
     ];
 
-    const seedOrders = db.transaction(() => {
+    try {
+        await conn.beginTransaction();
         for (const o of orders) {
             const total = o.items.reduce((s, i) => s + i.qty * i.price, 0);
-            insertOrder.run(o.id, o.supplier, o.date, o.status, total);
+            await conn.execute(insertOrderQuery, [o.id, o.supplier, o.date, o.status, total]);
             for (const item of o.items) {
-                insertOrderItem.run(o.id, item.product, item.qty, item.price);
+                await conn.execute(insertOrderItemQuery, [o.id, item.product, item.qty, item.price]);
             }
         }
-    });
-    seedOrders();
+        await conn.commit();
+    } catch(err) {
+        await conn.rollback();
+        throw err;
+    }
 
     // ---- Seed Price Comparisons ----
-    const insertPriceComp = db.prepare(`
-        INSERT INTO price_comparisons (product_name, supplier_name, price, is_best) VALUES (?, ?, ?, ?)
-    `);
+    const insertPriceCompQuery = `INSERT INTO price_comparisons (product_name, supplier_name, price, is_best) VALUES (?, ?, ?, ?)`;
     const priceComps = [
         ['Cotton Kurti', 'Cotton Crafts India', 550, 1],
         ['Cotton Kurti', 'Heritage Textiles', 610, 0],
@@ -138,30 +141,36 @@ function seed() {
         ['Cotton Anarkali', 'Heritage Textiles', 920, 1],
         ['Cotton Anarkali', 'Fabric Paradise', 980, 0],
     ];
-    const seedPriceComps = db.transaction(() => {
-        for (const p of priceComps) insertPriceComp.run(...p);
-    });
-    seedPriceComps();
+
+    try {
+        await conn.beginTransaction();
+        for (const p of priceComps) await conn.execute(insertPriceCompQuery, p);
+        await conn.commit();
+    } catch(err) {
+        await conn.rollback();
+        throw err;
+    }
 
     // ---- Seed Monthly Purchase Data ----
-    const insertMonthly = db.prepare(`
-        INSERT INTO monthly_purchases (month, year, amount, order_count) VALUES (?, ?, ?, ?)
-    `);
+    const insertMonthlyQuery = `INSERT INTO monthly_purchases (month, year, amount, order_count) VALUES (?, ?, ?, ?)`;
     const monthlyData = [
         ['Mar', 2025, 42000, 4], ['Apr', 2025, 38000, 3], ['May', 2025, 55000, 5],
         ['Jun', 2025, 48000, 4], ['Jul', 2025, 61000, 6], ['Aug', 2025, 52000, 4],
         ['Sep', 2025, 47000, 3], ['Oct', 2025, 58000, 5], ['Nov', 2025, 63000, 6],
         ['Dec', 2025, 72000, 7], ['Jan', 2026, 85000, 8], ['Feb', 2026, 95000, 9],
     ];
-    const seedMonthly = db.transaction(() => {
-        for (const m of monthlyData) insertMonthly.run(...m);
-    });
-    seedMonthly();
+
+    try {
+        await conn.beginTransaction();
+        for (const m of monthlyData) await conn.execute(insertMonthlyQuery, m);
+        await conn.commit();
+    } catch(err) {
+        await conn.rollback();
+        throw err;
+    }
 
     // ---- Seed Activity Log ----
-    const insertActivity = db.prepare(`
-        INSERT INTO activity_log (action, entity_type, entity_id, description, created_at) VALUES (?, ?, ?, ?, ?)
-    `);
+    const insertActivityQuery = `INSERT INTO activity_log (action, entity_type, entity_id, description, created_at) VALUES (?, ?, ?, ?, ?)`;
     const activities = [
         ['received', 'order', 'PO-2026-042', 'Order #PO-2026-042 received from Silk Route Fabrics', '2026-03-03 08:00:00'],
         ['alert', 'product', 'PRD-006', 'Low stock alert: Cotton Anarkali Suit (3 units left)', '2026-03-03 05:00:00'],
@@ -169,10 +178,17 @@ function seed() {
         ['sent', 'order', 'PO-2026-043', 'Purchase order #PO-2026-043 sent to Linen World', '2026-03-02 10:00:00'],
         ['updated', 'supplier', 'SUP-004', 'Supplier Denim Dreams status updated to Active', '2026-03-01 09:00:00'],
     ];
-    const seedActivities = db.transaction(() => {
-        for (const a of activities) insertActivity.run(...a);
-    });
-    seedActivities();
+
+    try {
+        await conn.beginTransaction();
+        for (const a of activities) await conn.execute(insertActivityQuery, a);
+        await conn.commit();
+    } catch(err) {
+        await conn.rollback();
+        throw err;
+    }
+
+    conn.release();
 
     console.log('✅ Database seeded successfully!');
     console.log(`   → ${suppliers.length} suppliers`);
@@ -185,8 +201,10 @@ function seed() {
 
 // Run directly
 if (require.main === module) {
-    seed();
-    process.exit(0);
+    seed().then(() => process.exit(0)).catch(err => {
+        console.error(err);
+        process.exit(1);
+    });
 }
 
 module.exports = { seed };

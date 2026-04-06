@@ -6,9 +6,9 @@ const { getDb } = require('../db');
 const router = express.Router();
 
 // GET /api/alerts — get low stock products
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
     try {
-        const db = getDb();
+        const db = await getDb();
         const { severity, fabric } = req.query;
 
         let sql = `
@@ -33,7 +33,7 @@ router.get('/', (req, res) => {
 
         sql += ' ORDER BY p.stock ASC';
 
-        const alerts = db.prepare(sql).all(...params);
+        const alerts = (await db.query(sql, [...params]))[0];
 
         res.json({
             data: alerts,
@@ -47,10 +47,10 @@ router.get('/', (req, res) => {
 });
 
 // GET /api/alerts/count — quick count for badges
-router.get('/count', (req, res) => {
+router.get('/count', async (req, res) => {
     try {
-        const db = getDb();
-        const count = db.prepare('SELECT COUNT(*) as count FROM products WHERE stock <= min_stock').get().count;
+        const db = await getDb();
+        const [[{ count }]] = await db.query('SELECT COUNT(*) as count FROM products WHERE stock <= min_stock');
         res.json({ count });
     } catch (err) {
         res.status(500).json({ error: err.message });

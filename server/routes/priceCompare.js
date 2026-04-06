@@ -6,12 +6,12 @@ const { getDb } = require('../db');
 const router = express.Router();
 
 // GET /api/price-compare — get all price comparisons grouped by product
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
     try {
-        const db = getDb();
-        const rows = db.prepare(`
+        const db = await getDb();
+        const rows = (await db.query(`
             SELECT * FROM price_comparisons ORDER BY product_name, price ASC
-        `).all();
+        `))[0];
 
         // Group by product
         const grouped = {};
@@ -35,12 +35,12 @@ router.get('/', (req, res) => {
 });
 
 // GET /api/price-compare/flat — flat list for table view
-router.get('/flat', (req, res) => {
+router.get('/flat', async (req, res) => {
     try {
-        const db = getDb();
-        const rows = db.prepare(`
+        const db = await getDb();
+        const rows = (await db.query(`
             SELECT * FROM price_comparisons ORDER BY product_name, price ASC
-        `).all();
+        `))[0];
 
         // Calculate average per product
         const averages = {};
@@ -68,9 +68,9 @@ router.get('/flat', (req, res) => {
 });
 
 // POST /api/price-compare — add a price comparison entry
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
     try {
-        const db = getDb();
+        const db = await getDb();
         const { productName, supplierName, price, isBest } = req.body;
 
         if (!productName || !supplierName || price == null) {
@@ -79,17 +79,17 @@ router.post('/', (req, res) => {
 
         // If marking as best, unmark existing best for this product
         if (isBest) {
-            db.prepare('UPDATE price_comparisons SET is_best = 0 WHERE product_name = ?').run(productName);
+            await db.execute('UPDATE price_comparisons SET is_best = 0 WHERE product_name = ?', [productName]);
         }
 
-        const result = db.prepare(`
+        const [result] = await db.execute(`
             INSERT INTO price_comparisons (product_name, supplier_name, price, is_best)
             VALUES (?, ?, ?, ?)
-        `).run(productName, supplierName, price, isBest ? 1 : 0);
+        `, [productName, supplierName, price, isBest ? 1 : 0]);
 
         res.status(201).json({
             message: 'Price comparison added.',
-            id: result.lastInsertRowid,
+            id: result.insertId,
         });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -97,25 +97,25 @@ router.post('/', (req, res) => {
 });
 
 // PUT /api/price-compare/:id — update price
-router.put('/:id', (req, res) => {
+router.put('/:id', async (req, res) => {
     try {
-        const db = getDb();
+        const db = await getDb();
         const { price, isBest } = req.body;
 
-        const existing = db.prepare('SELECT * FROM price_comparisons WHERE id = ?').get(req.params.id);
+        const existing = (await db.query('SELECT * FROM price_comparisons WHERE id = ?', [req.params.id]))[0][0];
         if (!existing) return res.status(404).json({ error: 'Entry not found.' });
 
         if (isBest) {
-            db.prepare('UPDATE price_comparisons SET is_best = 0 WHERE product_name = ?').run(existing.product_name);
+            await db.execute('UPDATE price_comparisons SET is_best = 0 WHERE product_name = ?', [existing.product_name]);
         }
 
-        db.prepare(`
+        await db.execute(`
             UPDATE price_comparisons SET
                 price = COALESCE(?, price),
                 is_best = ?,
                 last_updated = CURRENT_TIMESTAMP
             WHERE id = ?
-        `).run(price, isBest ? 1 : 0, req.params.id);
+        `, [price, isBest ? 1 : 0, req.params.id]);
 
         res.json({ message: 'Price comparison updated.' });
     } catch (err) {
@@ -124,10 +124,10 @@ router.put('/:id', (req, res) => {
 });
 
 // DELETE /api/price-compare/:id
-router.delete('/:id', (req, res) => {
+router.delete('/:id', async (req, res) => {
     try {
-        const db = getDb();
-        db.prepare('DELETE FROM price_comparisons WHERE id = ?').run(req.params.id);
+        const db = await getDb();
+        (await db.execute('DELETE FROM price_comparisons WHERE id = ?', [req.params.id]));
         res.json({ message: 'Price comparison deleted.' });
     } catch (err) {
         res.status(500).json({ error: err.message });

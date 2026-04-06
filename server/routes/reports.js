@@ -6,13 +6,13 @@ const { getDb } = require('../db');
 const router = express.Router();
 
 // GET /api/reports/monthly-purchases — monthly purchase data for charts
-router.get('/monthly-purchases', (req, res) => {
+router.get('/monthly-purchases', async (req, res) => {
     try {
-        const db = getDb();
+        const db = await getDb();
         const { months } = req.query;
         const limit = parseInt(months) || 12;
 
-        const data = db.prepare(`
+        const data = (await db.query(`
             SELECT month, year, amount, order_count
             FROM monthly_purchases
             ORDER BY year ASC, 
@@ -22,7 +22,7 @@ router.get('/monthly-purchases', (req, res) => {
                     WHEN 'Jul' THEN 7 WHEN 'Aug' THEN 8 WHEN 'Sep' THEN 9
                     WHEN 'Oct' THEN 10 WHEN 'Nov' THEN 11 WHEN 'Dec' THEN 12
                 END ASC
-        `).all();
+        `))[0];
 
         // Take last N records
         const sliced = data.slice(-limit);
@@ -38,12 +38,12 @@ router.get('/monthly-purchases', (req, res) => {
 });
 
 // GET /api/reports/stock-by-category
-router.get('/stock-by-category', (req, res) => {
+router.get('/stock-by-category', async (req, res) => {
     try {
-        const db = getDb();
-        const data = db.prepare(`
+        const db = await getDb();
+        const [data] = await db.query(`
             SELECT category, SUM(stock) as total_stock FROM products GROUP BY category
-        `).all();
+        `);
 
         res.json({
             labels: data.map(d => d.category),
@@ -55,12 +55,12 @@ router.get('/stock-by-category', (req, res) => {
 });
 
 // GET /api/reports/fabric-distribution
-router.get('/fabric-distribution', (req, res) => {
+router.get('/fabric-distribution', async (req, res) => {
     try {
-        const db = getDb();
-        const data = db.prepare(`
+        const db = await getDb();
+        const [data] = await db.query(`
             SELECT fabric, SUM(stock) as total_stock FROM products GROUP BY fabric
-        `).all();
+        `);
 
         res.json({
             labels: data.map(d => d.fabric),
@@ -72,16 +72,16 @@ router.get('/fabric-distribution', (req, res) => {
 });
 
 // GET /api/reports/supplier-volume
-router.get('/supplier-volume', (req, res) => {
+router.get('/supplier-volume', async (req, res) => {
     try {
-        const db = getDb();
-        const data = db.prepare(`
+        const db = await getDb();
+        const [data] = await db.query(`
             SELECT s.name, SUM(po.total) as total_volume, COUNT(po.id) as order_count
             FROM purchase_orders po
             JOIN suppliers s ON po.supplier_id = s.id
             GROUP BY po.supplier_id
             ORDER BY total_volume DESC
-        `).all();
+        `);
 
         res.json({ data });
     } catch (err) {
@@ -90,14 +90,14 @@ router.get('/supplier-volume', (req, res) => {
 });
 
 // GET /api/reports/category-value
-router.get('/category-value', (req, res) => {
+router.get('/category-value', async (req, res) => {
     try {
-        const db = getDb();
-        const data = db.prepare(`
+        const db = await getDb();
+        const [data] = await db.query(`
             SELECT category, SUM(stock * price) as inventory_value
             FROM products
             GROUP BY category
-        `).all();
+        `);
 
         res.json({
             labels: data.map(d => d.category),
@@ -109,10 +109,10 @@ router.get('/category-value', (req, res) => {
 });
 
 // GET /api/reports/supplier-performance
-router.get('/supplier-performance', (req, res) => {
+router.get('/supplier-performance', async (req, res) => {
     try {
-        const db = getDb();
-        const data = db.prepare(`
+        const db = await getDb();
+        const [data] = await db.query(`
             SELECT
                 s.name,
                 COUNT(po.id) as total_orders,
@@ -128,7 +128,7 @@ router.get('/supplier-performance', (req, res) => {
             WHERE po.id IS NOT NULL
             GROUP BY s.id
             ORDER BY total_value DESC
-        `).all();
+        `);
 
         res.json({ data });
     } catch (err) {
@@ -137,24 +137,24 @@ router.get('/supplier-performance', (req, res) => {
 });
 
 // GET /api/reports/kpis — key performance indicators
-router.get('/kpis', (req, res) => {
+router.get('/kpis', async (req, res) => {
     try {
-        const db = getDb();
+        const db = await getDb();
 
-        const totalPurchase = db.prepare('SELECT SUM(amount) as value FROM monthly_purchases').get().value || 0;
-        const stockValue = db.prepare('SELECT SUM(stock * price) as value FROM products').get().value || 0;
-        const avgOrderValue = db.prepare('SELECT ROUND(AVG(total)) as value FROM purchase_orders').get().value || 0;
-        const lowStockCount = db.prepare('SELECT COUNT(*) as count FROM products WHERE stock <= min_stock').get().count;
-        const totalProducts = db.prepare('SELECT COUNT(*) as count FROM products').get().count;
-        const activeSuppliers = db.prepare("SELECT COUNT(*) as count FROM suppliers WHERE status = 'Active'").get().count;
+        const [[{ value: totalPurchase }]] = await db.query('SELECT SUM(amount) as value FROM monthly_purchases');
+        const [[{ value: stockValue }]] = await db.query('SELECT SUM(stock * price) as value FROM products');
+        const [[{ value: avgOrderValue }]] = await db.query('SELECT ROUND(AVG(total)) as value FROM purchase_orders');
+        const [[{ count: lowStockCount }]] = await db.query('SELECT COUNT(*) as count FROM products WHERE stock <= min_stock');
+        const [[{ count: totalProducts }]] = await db.query('SELECT COUNT(*) as count FROM products');
+        const [[{ count: activeSuppliers }]] = await db.query("SELECT COUNT(*) as count FROM suppliers WHERE status = 'Active'");
 
         res.json({
-            totalPurchase,
-            stockValue,
-            avgOrderValue,
-            lowStockCount,
-            totalProducts,
-            activeSuppliers,
+            totalPurchase: totalPurchase || 0,
+            stockValue: stockValue || 0,
+            avgOrderValue: avgOrderValue || 0,
+            lowStockCount: lowStockCount || 0,
+            totalProducts: totalProducts || 0,
+            activeSuppliers: activeSuppliers || 0,
         });
     } catch (err) {
         res.status(500).json({ error: err.message });

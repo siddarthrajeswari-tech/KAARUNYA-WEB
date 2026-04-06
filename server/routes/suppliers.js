@@ -6,9 +6,9 @@ const { getDb } = require('../db');
 const router = express.Router();
 
 // GET /api/suppliers — list all suppliers
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
     try {
-        const db = getDb();
+        const db = await getDb();
         const { search, status, sort, order } = req.query;
 
         let sql = 'SELECT * FROM suppliers WHERE 1=1';
@@ -30,7 +30,7 @@ router.get('/', (req, res) => {
         const sortOrder = order === 'desc' ? 'DESC' : 'ASC';
         sql += ` ORDER BY ${sortCol} ${sortOrder}`;
 
-        const suppliers = db.prepare(sql).all(...params);
+        const suppliers = (await db.query(sql, [...params]))[0];
         res.json({ data: suppliers, total: suppliers.length });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -38,16 +38,16 @@ router.get('/', (req, res) => {
 });
 
 // GET /api/suppliers/:id — get single supplier
-router.get('/:id', (req, res) => {
+router.get('/:id', async (req, res) => {
     try {
-        const db = getDb();
-        const supplier = db.prepare('SELECT * FROM suppliers WHERE id = ?').get(req.params.id);
+        const db = await getDb();
+        const supplier = (await db.query('SELECT * FROM suppliers WHERE id = ?', [req.params.id]))[0][0];
         if (!supplier) return res.status(404).json({ error: 'Supplier not found.' });
 
         // Also get products from this supplier
-        const products = db.prepare('SELECT * FROM products WHERE supplier_id = ?').all(req.params.id);
+        const products = (await db.query('SELECT * FROM products WHERE supplier_id = ?', [req.params.id]))[0];
         // And orders
-        const orders = db.prepare('SELECT * FROM purchase_orders WHERE supplier_id = ? ORDER BY order_date DESC').all(req.params.id);
+        const orders = (await db.query('SELECT * FROM purchase_orders WHERE supplier_id = ? ORDER BY order_date DESC', [req.params.id]))[0];
 
         res.json({ data: { ...supplier, products, orders } });
     } catch (err) {
@@ -56,33 +56,33 @@ router.get('/:id', (req, res) => {
 });
 
 // POST /api/suppliers — create new supplier
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
     try {
-        const db = getDb();
+        const db = await getDb();
         const { name, address, phone, email, status } = req.body;
 
         if (!name) return res.status(400).json({ error: 'Supplier name is required.' });
 
         // Generate ID
-        const last = db.prepare("SELECT id FROM suppliers ORDER BY id DESC LIMIT 1").get();
+        const last = (await db.query("SELECT id FROM suppliers ORDER BY id DESC LIMIT 1"))[0][0];
         let nextNum = 1;
         if (last) {
             nextNum = parseInt(last.id.split('-')[1]) + 1;
         }
         const id = 'SUP-' + String(nextNum).padStart(3, '0');
 
-        db.prepare(`
+        await db.execute(`
             INSERT INTO suppliers (id, name, address, phone, email, status)
             VALUES (?, ?, ?, ?, ?, ?)
-        `).run(id, name, address || '', phone || '', email || '', status || 'Active');
+        `, [id, name, address || '', phone || '', email || '', status || 'Active']);
 
         // Log activity
-        db.prepare(`
+        await db.execute(`
             INSERT INTO activity_log (action, entity_type, entity_id, description)
             VALUES ('created', 'supplier', ?, ?)
-        `).run(id, `New supplier added: ${name}`);
+        `, [id, `New supplier added: ${name}`]);
 
-        const supplier = db.prepare('SELECT * FROM suppliers WHERE id = ?').get(id);
+        const supplier = (await db.query('SELECT * FROM suppliers WHERE id = ?', [id]))[0][0];
         res.status(201).json({ message: 'Supplier created.', data: supplier });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -90,15 +90,15 @@ router.post('/', (req, res) => {
 });
 
 // PUT /api/suppliers/:id — update supplier
-router.put('/:id', (req, res) => {
+router.put('/:id', async (req, res) => {
     try {
-        const db = getDb();
+        const db = await getDb();
         const { name, address, phone, email, status } = req.body;
 
-        const existing = db.prepare('SELECT * FROM suppliers WHERE id = ?').get(req.params.id);
+        const existing = (await db.query('SELECT * FROM suppliers WHERE id = ?', [req.params.id]))[0][0];
         if (!existing) return res.status(404).json({ error: 'Supplier not found.' });
 
-        db.prepare(`
+        await db.execute(`
             UPDATE suppliers SET
                 name = COALESCE(?, name),
                 address = COALESCE(?, address),
@@ -107,15 +107,15 @@ router.put('/:id', (req, res) => {
                 status = COALESCE(?, status),
                 updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
-        `).run(name, address, phone, email, status, req.params.id);
+        `, [name, address, phone, email, status, req.params.id]);
 
         // Log activity
-        db.prepare(`
+        await db.execute(`
             INSERT INTO activity_log (action, entity_type, entity_id, description)
             VALUES ('updated', 'supplier', ?, ?)
-        `).run(req.params.id, `Supplier ${name || existing.name} updated`);
+        `, [req.params.id, `Supplier ${existing.name} updated`]);
 
-        const supplier = db.prepare('SELECT * FROM suppliers WHERE id = ?').get(req.params.id);
+        const supplier = (await db.query('SELECT * FROM suppliers WHERE id = ?', [req.params.id]))[0][0];
         res.json({ message: 'Supplier updated.', data: supplier });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -123,27 +123,27 @@ router.put('/:id', (req, res) => {
 });
 
 // DELETE /api/suppliers/:id — delete supplier
-router.delete('/:id', (req, res) => {
+router.delete('/:id', async (req, res) => {
     try {
-        const db = getDb();
-        const existing = db.prepare('SELECT * FROM suppliers WHERE id = ?').get(req.params.id);
+        const db = await getDb();
+        const existing = (await db.query('SELECT * FROM suppliers WHERE id = ?', [req.params.id]))[0][0];
         if (!existing) return res.status(404).json({ error: 'Supplier not found.' });
 
         // Check for related products
-        const productCount = db.prepare('SELECT COUNT(*) as count FROM products WHERE supplier_id = ?').get(req.params.id);
+        const [[productCount]] = await db.query('SELECT COUNT(*) as count FROM products WHERE supplier_id = ?', [req.params.id]);
         if (productCount.count > 0) {
             return res.status(409).json({
                 error: `Cannot delete supplier with ${productCount.count} associated products. Remove products first or reassign them.`
             });
         }
 
-        db.prepare('DELETE FROM suppliers WHERE id = ?').run(req.params.id);
+        await db.execute('DELETE FROM suppliers WHERE id = ?', [req.params.id]);
 
         // Log activity
-        db.prepare(`
+        await db.execute(`
             INSERT INTO activity_log (action, entity_type, entity_id, description)
             VALUES ('deleted', 'supplier', ?, ?)
-        `).run(req.params.id, `Supplier ${existing.name} deleted`);
+        `, [req.params.id, `Supplier ${existing.name} deleted`]);
 
         res.json({ message: 'Supplier deleted.' });
     } catch (err) {

@@ -1,173 +1,209 @@
 // ============================================
-// KAARUNYA — Database Initialization (SQLite)
+// KAARUNYA — Database Initialization (MySQL)
 // ============================================
-const Database = require('better-sqlite3');
-const path = require('path');
-const fs = require('fs');
-
-const DB_PATH = process.env.DB_PATH || './server/data/kaarunya.db';
+const mysql = require('mysql2/promise');
+require('dotenv').config();
 
 let db;
 
-function getDb() {
+async function getDb() {
     if (!db) {
-        // Ensure data directory exists
-        const dir = path.dirname(path.resolve(DB_PATH));
-        if (!fs.existsSync(dir)) {
-            fs.mkdirSync(dir, { recursive: true });
-        }
-        db = new Database(path.resolve(DB_PATH));
-        db.pragma('journal_mode = WAL');
-        db.pragma('foreign_keys = ON');
+        // Create pool instead of single connection for better performance
+        db = mysql.createPool({
+            host: process.env.DB_HOST || 'localhost',
+            port: process.env.DB_PORT || 3306,
+            user: process.env.DB_USER || 'root',
+            password: process.env.DB_PASSWORD || '',
+            database: process.env.DB_NAME || 'kaarunya',
+            waitForConnections: true,
+            connectionLimit: 10,
+            queueLimit: 0
+        });
     }
     return db;
 }
 
-function initDatabase() {
-    const db = getDb();
+async function initDatabase() {
+    // We need a separate raw connection to create the DB if it doesn't exist
+    const connection = await mysql.createConnection({
+        host: process.env.DB_HOST || 'localhost',
+        port: process.env.DB_PORT || 3306,
+        user: process.env.DB_USER || 'root',
+        password: process.env.DB_PASSWORD || ''
+    });
+
+    await connection.query(`CREATE DATABASE IF NOT EXISTS \`${process.env.DB_NAME || 'kaarunya'}\`;`);
+    await connection.end();
+
+    const pool = await getDb();
 
     // ---- Create Tables ----
-    db.exec(`
-        -- Users table (for authentication)
+    await pool.query(`
         CREATE TABLE IF NOT EXISTS users (
-            id          INTEGER PRIMARY KEY AUTOINCREMENT,
-            username    TEXT UNIQUE NOT NULL,
-            password    TEXT NOT NULL,
-            full_name   TEXT NOT NULL,
-            role        TEXT DEFAULT 'staff' CHECK(role IN ('admin','manager','staff')),
-            email       TEXT,
-            is_active   INTEGER DEFAULT 1,
+            id          INT AUTO_INCREMENT PRIMARY KEY,
+            username    VARCHAR(255) UNIQUE NOT NULL,
+            password    VARCHAR(255) NOT NULL,
+            full_name   VARCHAR(255) NOT NULL,
+            role        ENUM('admin','manager','staff') DEFAULT 'staff',
+            email       VARCHAR(255),
+            is_active   TINYINT DEFAULT 1,
             created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+            updated_at  DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         );
+    `);
 
-        -- Suppliers table
+    await pool.query(`
         CREATE TABLE IF NOT EXISTS suppliers (
-            id          TEXT PRIMARY KEY,
-            name        TEXT NOT NULL,
+            id          VARCHAR(255) PRIMARY KEY,
+            name        VARCHAR(255) NOT NULL,
             address     TEXT,
-            phone       TEXT,
-            email       TEXT,
-            status      TEXT DEFAULT 'Active' CHECK(status IN ('Active','Inactive')),
+            phone       VARCHAR(255),
+            email       VARCHAR(255),
+            status      ENUM('Active','Inactive') DEFAULT 'Active',
             created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+            updated_at  DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         );
+    `);
 
-        -- Products table
+    await pool.query(`
         CREATE TABLE IF NOT EXISTS products (
-            id          TEXT PRIMARY KEY,
-            name        TEXT NOT NULL,
-            category    TEXT NOT NULL CHECK(category IN ('Women','Child')),
-            fabric      TEXT NOT NULL CHECK(fabric IN ('Cotton','Rayon','Silk','Linen','Denim')),
-            stock       INTEGER DEFAULT 0,
-            min_stock   INTEGER DEFAULT 10,
-            price       REAL DEFAULT 0,
-            supplier_id TEXT,
+            id          VARCHAR(255) PRIMARY KEY,
+            name        VARCHAR(255) NOT NULL,
+            category    ENUM('Women','Child') NOT NULL,
+            fabric      ENUM('Cotton','Rayon','Silk','Linen','Denim') NOT NULL,
+            stock       INT DEFAULT 0,
+            min_stock   INT DEFAULT 10,
+            price       DECIMAL(10,2) DEFAULT 0,
+            supplier_id VARCHAR(255),
             created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at  DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             FOREIGN KEY (supplier_id) REFERENCES suppliers(id) ON DELETE SET NULL
         );
+    `);
 
-        -- Purchase Orders table
+    await pool.query(`
         CREATE TABLE IF NOT EXISTS purchase_orders (
-            id          TEXT PRIMARY KEY,
-            supplier_id TEXT NOT NULL,
-            order_date  TEXT NOT NULL,
-            status      TEXT DEFAULT 'Pending' CHECK(status IN ('Pending','Ordered','Delivered','Cancelled')),
-            total       REAL DEFAULT 0,
+            id          VARCHAR(255) PRIMARY KEY,
+            supplier_id VARCHAR(255) NOT NULL,
+            order_date  DATE NOT NULL,
+            status      ENUM('Pending','Ordered','Delivered','Cancelled') DEFAULT 'Pending',
+            total       DECIMAL(10,2) DEFAULT 0,
             notes       TEXT,
             created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at  DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             FOREIGN KEY (supplier_id) REFERENCES suppliers(id)
         );
+    `);
 
-        -- Purchase Order Items table
+    await pool.query(`
         CREATE TABLE IF NOT EXISTS purchase_order_items (
-            id              INTEGER PRIMARY KEY AUTOINCREMENT,
-            order_id        TEXT NOT NULL,
-            product_id      TEXT NOT NULL,
-            quantity        INTEGER NOT NULL,
-            unit_price      REAL NOT NULL,
-            subtotal        REAL GENERATED ALWAYS AS (quantity * unit_price) STORED,
+            id              INT AUTO_INCREMENT PRIMARY KEY,
+            order_id        VARCHAR(255) NOT NULL,
+            product_id      VARCHAR(255) NOT NULL,
+            quantity        INT NOT NULL,
+            unit_price      DECIMAL(10,2) NOT NULL,
+            subtotal        DECIMAL(10,2) GENERATED ALWAYS AS (quantity * unit_price) STORED,
             FOREIGN KEY (order_id) REFERENCES purchase_orders(id) ON DELETE CASCADE,
             FOREIGN KEY (product_id) REFERENCES products(id)
         );
-
-        -- Price Comparisons table
-        CREATE TABLE IF NOT EXISTS price_comparisons (
-            id              INTEGER PRIMARY KEY AUTOINCREMENT,
-            product_name    TEXT NOT NULL,
-            supplier_name   TEXT NOT NULL,
-            price           REAL NOT NULL,
-            is_best         INTEGER DEFAULT 0,
-            last_updated    DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-
-        -- Monthly purchase data (for reports/charts)
-        CREATE TABLE IF NOT EXISTS monthly_purchases (
-            id          INTEGER PRIMARY KEY AUTOINCREMENT,
-            month       TEXT NOT NULL,
-            year        INTEGER NOT NULL,
-            amount      REAL DEFAULT 0,
-            order_count INTEGER DEFAULT 0,
-            UNIQUE(month, year)
-        );
-
-        -- Activity Log
-        CREATE TABLE IF NOT EXISTS activity_log (
-            id          INTEGER PRIMARY KEY AUTOINCREMENT,
-            action      TEXT NOT NULL,
-            entity_type TEXT,
-            entity_id   TEXT,
-            description TEXT,
-            user_id     INTEGER,
-            created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-
-        -- Password Reset Tokens
-        CREATE TABLE IF NOT EXISTS password_reset_tokens (
-            id          INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id     INTEGER NOT NULL,
-            token       TEXT UNIQUE NOT NULL,
-            expires_at  DATETIME NOT NULL,
-            used        INTEGER DEFAULT 0,
-            created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-        );
-
-        -- Two-Factor Authentication
-        CREATE TABLE IF NOT EXISTS two_factor_auth (
-            id          INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id     INTEGER UNIQUE NOT NULL,
-            secret      TEXT NOT NULL,
-            is_enabled  INTEGER DEFAULT 0,
-            created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-        );
-        -- Settings / Shop Info
-        CREATE TABLE IF NOT EXISTS settings (
-            key         TEXT PRIMARY KEY,
-            value       TEXT NOT NULL,
-            updated_at  DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-        -- Create indexes for performance
-        CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);
-        CREATE INDEX IF NOT EXISTS idx_products_fabric ON products(fabric);
-        CREATE INDEX IF NOT EXISTS idx_products_supplier ON products(supplier_id);
-        CREATE INDEX IF NOT EXISTS idx_products_stock ON products(stock, min_stock);
-        CREATE INDEX IF NOT EXISTS idx_orders_supplier ON purchase_orders(supplier_id);
-        CREATE INDEX IF NOT EXISTS idx_orders_status ON purchase_orders(status);
-        CREATE INDEX IF NOT EXISTS idx_orders_date ON purchase_orders(order_date);
-        CREATE INDEX IF NOT EXISTS idx_order_items_order ON purchase_order_items(order_id);
-        CREATE INDEX IF NOT EXISTS idx_price_comparisons_product ON price_comparisons(product_name);
-        CREATE INDEX IF NOT EXISTS idx_activity_log_date ON activity_log(created_at);
-        CREATE INDEX IF NOT EXISTS idx_activity_log_user ON activity_log(user_id);
-        CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_token ON password_reset_tokens(token);
-        CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_user ON password_reset_tokens(user_id);
     `);
 
-    console.log('✅ Database initialized successfully');
-    return db;
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS price_comparisons (
+            id              INT AUTO_INCREMENT PRIMARY KEY,
+            product_name    VARCHAR(255) NOT NULL,
+            supplier_name   VARCHAR(255) NOT NULL,
+            price           DECIMAL(10,2) NOT NULL,
+            is_best         TINYINT DEFAULT 0,
+            last_updated    DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        );
+    `);
+
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS monthly_purchases (
+            id          INT AUTO_INCREMENT PRIMARY KEY,
+            month       VARCHAR(20) NOT NULL,
+            year        INT NOT NULL,
+            amount      DECIMAL(10,2) DEFAULT 0,
+            order_count INT DEFAULT 0,
+            UNIQUE(month, year)
+        );
+    `);
+
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS activity_log (
+            id          INT AUTO_INCREMENT PRIMARY KEY,
+            action      VARCHAR(255) NOT NULL,
+            entity_type VARCHAR(255),
+            entity_id   VARCHAR(255),
+            description TEXT,
+            user_id     INT,
+            created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+    `);
+
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS password_reset_tokens (
+            id          INT AUTO_INCREMENT PRIMARY KEY,
+            user_id     INT NOT NULL,
+            token       VARCHAR(255) UNIQUE NOT NULL,
+            expires_at  DATETIME NOT NULL,
+            used        TINYINT DEFAULT 0,
+            created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        );
+    `);
+
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS two_factor_auth (
+            id          INT AUTO_INCREMENT PRIMARY KEY,
+            user_id     INT UNIQUE NOT NULL,
+            secret      VARCHAR(255) NOT NULL,
+            is_enabled  TINYINT DEFAULT 0,
+            created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        );
+    `);
+
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS settings (
+            \`key\`         VARCHAR(255) PRIMARY KEY,
+            value         TEXT NOT NULL,
+            updated_at    DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        );
+    `);
+
+    // MySQL index creation requires a separate alter or direct creation if they don't exist,
+    // but IF NOT EXISTS on CREATE INDEX is only supported in MySQL 8.0.14+
+    const indexes = [
+        "CREATE INDEX idx_products_category ON products(category);",
+        "CREATE INDEX idx_products_fabric ON products(fabric);",
+        "CREATE INDEX idx_products_supplier ON products(supplier_id);",
+        "CREATE INDEX idx_products_stock ON products(stock, min_stock);",
+        "CREATE INDEX idx_orders_supplier ON purchase_orders(supplier_id);",
+        "CREATE INDEX idx_orders_status ON purchase_orders(status);",
+        "CREATE INDEX idx_orders_date ON purchase_orders(order_date);",
+        "CREATE INDEX idx_order_items_order ON purchase_order_items(order_id);",
+        "CREATE INDEX idx_price_comparisons_product ON price_comparisons(product_name);",
+        "CREATE INDEX idx_activity_log_date ON activity_log(created_at);",
+        "CREATE INDEX idx_activity_log_user ON activity_log(user_id);",
+        "CREATE INDEX idx_password_reset_tokens_token ON password_reset_tokens(token);",
+        "CREATE INDEX idx_password_reset_tokens_user ON password_reset_tokens(user_id);"
+    ];
+
+    for (const idxQuery of indexes) {
+        try {
+            await pool.query(idxQuery);
+        } catch (err) {
+            // Ignore Duplicate Key errors for indexes that already exist. ER_DUP_KEY is standard, or ER_DUP_KEYNAME
+            if (!err.message.includes('Duplicate')) {
+                // Ignore for now
+            }
+        }
+    }
+
+    console.log('✅ MySQL Database initialized successfully');
+    return pool;
 }
 
 module.exports = { getDb, initDatabase };
